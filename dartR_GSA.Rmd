@@ -950,7 +950,7 @@ The idea of a landscape genetic analysis is that genetic similarity is between i
 For this example we first load a data set called possums, which is already in genlight format.
 
 ```{r, eval=FALSE}
-possums <- readRDS("./data/scratch/gsa/possums.rdata")
+possums <- readRDS("./data/scratch/GSA/possums.rdata")
 ```
 
 
