@@ -250,40 +250,879 @@ Today we will use a quite specialised type of object which are called genlight o
 
 ```
 
-
+\newpage
 
 #1. Preparing data sets (10:00 - 10:30)
-    -	loading data sets into R (DArT format)
-    - how to load other formats
+
+Visualising the process described below:
+
+
+\includegraphics{images/dartdata.png}
+
+
+
+## Loading data sets into R (DArT format)
+
+Diversity Arrays Technology Pty Ltd (DArT™) supply your data as excel spreadsheets in comma delimited format (.csv). Several files are provided.
+
+*	**SNP_1row.csv**	contains the SNP genotypes in one row format
+*	**SNP_2row.csv**	contains the SNP genotypes in two row format
+*	**SilicoDArT.csv**	contains the presence(1)/absence(0) of the sequence tag at a locus for each individual (analogous to AFLPs)
+*	**metadata.csv**	contains a report of the success of the sequencing and an explanation of the locus metadata provided in the above spreadsheets.
+
+## Reading DArT Files into a Genlight Object
+
+SNP data can be read into a genlight object using read.dart(). This function intelligently interrogates the input csv file to determine
+*	if the file is a 1-row or 2-row format, as supplied by Diversity Arrays Technology Pty Ltd.
+*	the number of locus metadata columns to be input (the first typically being cloneID and the last repAvg).
+*	the number of lines to skip at the top of the csv file before reading the specimen IDs and then the SNP data themselves.
+*	if there are any errors in the data.
+An example of the function used to input data is as follows:
+
+```{r, eval=FALSE}
+gl <- gl.read.dart(filename = "testset.csv", ind.metafile = " ind_metrics.csv")
+```
+
+The ```filename``` specifies the csv file provided by Diversity Arrays Technology, and the ```ind.metafile``` specifies the csv file, which contains metrics associated with each individual (id, pop, sex, etc). 
+
+Using the example data set provided in the package (accessed via an internal path to the files)
+
+```{r}
+dartfile <- system.file("extdata","testset_SNPs_2Row.csv", package="dartR")
+dartfile
+ind.metafile <- system.file("extdata","testset_metadata.csv", package="dartR")
+ind.metafile
+gl <- gl.read.dart(filename=dartfile, ind.metafile = ind.metafile, probar=FALSE)
+```
+
+```{block, type="hint"}
+It is a good idea to check the example report and the ind.meta file and compare your files with their formats. For example the gl.read.dart function assumes the RepAvg is the header of the last column, before the SNPs column and also that missing values are coded as '-'. If for whatever reason your report from DArT looks different, you need to adjust the arguments in the function accordingly.
+
+```
+
+
+The resultant genlight object, here named ```gl```, can be interrogated to determine if the data have been input correctly.
+
+To display (parts of) the genlight object we have the following options:
+
+Display the structure of the genlight object
+
+```{r}
+gl
+```
+
+Display the SNP genotypes for the first 3 individuals and 5 loci
+
+```{r}
+as.matrix(gl)[1:3,1:3]
+```
+
+
+Report the number of loci, individuals and populations
+
+ 
+```{r}
+nLoc(gl)
+nInd(gl)
+nPop(gl)
+```
+
+List the population labels (only the first 5)
+
+```{r}
+levels(pop(gl))[1:5]
+```
+
+
+
+## How to load other formats
     
-[Mainly from vignette....
+Please refer to the vignette if you want to use SNP data from a different source than DArT (which is completely feasible). The general approach is that you need to load your data in such a way that you result in a genlight object. To make use of all functions you then need to add the meta data (for loci and individuals) "manually" to the genlight object. For example if you have coordinates the correct "slot" to add would be:
 
-- explain the data format from dartR
-- Locus meta data
-- Individual meta data
+```{r, eval=FALSE}
+gl@other$latlong <- coordinatesforeachindividual
+```
 
-  
-#2. The idea of the a genlight object (10:45 - 11:00)
 
-    - explore a genlight object
-    - quality filter your data 
-    - subset/recode your data set
+#2. The format/structure of a genlight object (10:45 - 11:00)
+
+
+## Locus metadata
+
+
+The locus metadata included in the genlight object are those provided as part of your DArT report. These metadata are obtained from the DArT 1Row or 2Row csv file when it is read in to the genlight object. The locus metadata are held in an R ```data.frame``` that is associated with the SNP data as part of the genlight object.
+
+The locus metadata would typically include:
+
+identifier     |  explanation
+-------------  |  --------------------------------------------------------------
+AlleleID: | Unique identifier for the sequence in which the SNP marker occurs
+SNP: | In 2-row format, this column is blank in the Reference row, and contains the base position and base variant details in the SNP row. In 1-row format, this column contains the base position and base variant details
+SnpPosition: | The position (zero is position 1) in the sequence tag at which the defined SNP variant base occurs
+TrimmedSequence | (optional) The sequence containing the SNP or SNPs, trimmed of adaptors.
+CallRate: | The proportion of samples for which the genotype call is non-missing (that is, not "-" )
+OneRatioRef: | The proportion of samples for which the genotype score is "1", in the Reference allele row of the 2-row format.
+OneRatioSnp: | The proportion of samples for which the genotype score is "1", in the SNP allele row of the 2-row format
+FreqHomRef: | The proportion of samples homozygous for the Reference allele
+FreqHomSnp: | The proportion of samples homozygous for the Alternate (SNP) allele
+FreqHets: | The proportion of samples which score as heterozygous.
+PICRef: | The polymorphism information content (PIC) for the Reference allele row
+PICSnp: | The polymorphism information content (PIC) for the SNP allele row
+AvgPIC: | The average of the polymorphism information content (PIC) of the Reference and SNP allele rows
+AvgCountRef: | The sum of the tag read counts for all samples, divided by the number of samples with non-zero tag read counts, for the Reference allele row
+AvgCountSnp: | The sum of the tag read counts for all samples, divided by the number of samples with non-zero tag read counts, for the Alternate (SNP) allele row
+RepAvg: | The proportion of technical replicate assay pairs for which the marker score is consistent.
+
+
+These metadata variables are held in the genlight object as an associated data.frame called loc.metrics, which can be accessed in the following form:
+
+
+```{r}
+#Only the entries for the first ten individuals are shown
+gl@other$loc.metrics$RepAvg[1:10]
+```
+
+You can check the names of all available loc.metrics via:
+
+```{r}
+names(gl@other$loc.metrics)
+```
+
+Depending on the report from DarT you may have additional (fewer) loc.metrics (e.g. Trimmed Sequence is available on request).
+
+These metadata are used by the {dartR} package for various purposes, so if any are missing from your dataset, then there will be some analyses that will not be possible. For example, TrimmedSequence is used to generate output for subsequent phylogenetic analyses that require estimates of base frequencies and transition and transversion ratios.
+
+AlleleID is essential (with its very special format), and ```dartR``` scripts for loading your data sets will terminate with an error message if this is not present.
+
+
+## Individual Metadata
+
+
+Individual (=specimen or sample) metadata are user specified, and do not come from DArT. Individual metadata are held in a second dataframe associated with the SNP data in the genlight object. See the figure above.
+
+
+Two special individual metrics are:
+
+individual metric  | explanation
+----------  |  ------------------------------------------------------------
+id |	Unique identifier for the individual or specimen that links back to the physical sample
+pop |	A label for the biological population from which the individual was drawn
+
+These metrics are supplied by the user by way of a metafile, provided at the time of inputting the SNP data to the genlight object. A metafile is a comma-delimited file, usually named ind_metrics.csv or similar, that contains labelled columns. The file must have a column headed id, which contains the individual (=specimen or sample labels) and a column headed pop, which contains the populations to which individuals are assigned.
+
+
+These special metrics can be accessed a:
+
+```gl@pop``` or ```pop(gl)```
+
+and 
+
+```gl@ind.names``` or ```indNames(gl)```
+
+A number of other user-defined metrics can be included in the ind.metafile. Examples of user-defined metadata for individuals include:
+
+metric   |    explanation
+-----|-----------------------------------------
+sex |	Sex of the individual (Male, Female), necessary for gl.sexlinkage  
+maturity | 	Maturity of the individual (Adult, Subadult, juvenile) 
+lat |	Latitude of the location of collection 
+long |	Longitude of the location of collection 
+
+These optional data are provided by the user in the same metafile used to assign id labels and assign individuals to populations. It is the excel csv file referred to above.
+
+The individual metadata are held in the genlight object as a dataframe named ind.metrics and can be accessed using the following form:
+
+
+```{r}
+#only first 10 entries showns
+gl@other$ind.metrics$sex[1:10]
+```
+
+
+## Filtering
+
+
+
+A range of filters are available for selecting individuals or loci on the basis of quality metrics.
+
+function  |   explanation
+----------------- | -----------------------------------------------------
+	gl.report.callrate() | Calculate and report the number of loci or individuals for which the call rate exceeds a range of thresholds.
+ | gl.filter.callrate() | Calculate call rate (proportion with non-missing scores) for each locus or individual and remove those loci or individuals below a specified threshold.
+ | gl.report.repavg() | Report the number of loci or individuals for which the reproducibility (averaged over the two allelic states) exceeds a range of thresholds.
+ | gl.filter.repavg() | Remove those loci or individuals for which the reproducibility (averaged over the two allelic states) falls below a specified threshold.
+ | gl.report.secondaries() | Report the number of sequence tags with multiple SNP loci, and the number of SNP loci that are part of  or individuals for which the reproducibility (averaged over the two allelic states) exceeds a range of thresholds.
+ | gl.filter.secondaries() | Remove all but one locus where there is more than one locus per sequence tag.
+ | gl.report.monomorphs() | Report the number of monomorphic loci and the number of loci for which the scores are all missing (NA).
+ | gl.filter.monomorphs() | Remove all monomorphic loci, including loci for which the scores are all missing (NA).
+ | gl.report.hamming() | Report the distribution of pairwise Hamming distances between trimmed sequence tags. 
+ | gl.filter.hamming() | Filter loci by taking out one of a pair of loci with Hamming distances less than a threshold.
+ gl.filter.hwe | Filters departure of Hardy-Weinberg-Equilibrium for every loci per population or overall | no | [pop]
+ gl.report.hwe | Reports departure of Hardy-Weinberg-Equilibrium for every loci per population or overall | no | [pop]
+
+
+```{block, "hint"}
+Refer to the help on each function for details of the parameters taken by each of these functions using ```?nameoffunction```.
+
+```
+
+## Examples of dartR code to filter a ```gl``` dataset 
+
+
+Filtering of data is often necessary to make sure only high quality loci (few missing data) and with a consistent quality are retained and "noise" in the data set is minimised. In addition by filtering you reduce the number of loci, which often speeds up the analysis considerably. The kind and order of filtering that someone applies depends very much on the intended analysis. For example for classical calculation of indices of population structure, loci and individuals with lots of missing data might be discarded, though for other kind of analysis the amount of missing data may hint to "hidden" subspecies in the populations. Therefore a general adivse on the order and amount of filtering cannot be given. As an example if the focus is towards studying population structure, where only a limited number of individuals are sampled, a valid strategy is to filter in such a way that the number of individuals per population are maintained, but the number of loci can be reduced. So a suggested order here is:
+
+
+1. Filter by repeatability (```gl.filter.repavg``` in dartR) (a meassurement of quality per loci)
+2. Fitler by monomorphic loci (```gl.filter.monomorphs```)(as they do not provide information for population structure and simply slow the analysis)
+3. Filter by amount of missing data (```gl.filter.callrate, method="loc"```) per locus
+4. Filter to remove all but one of multiple snps in the same fragment (```gl.filter.secondaries```)
+5. Filter individuals by amount of missing data (```gl.filter.callrate, method="ind"```)
+
+Additional filters to apply could be for excluding possible loci under selection (```gl.outflank```), checking loci for linkage disequilibrium (```gl.report.ld```) or filtering for loci out of Hardy-Weinberg-Equilibrium (```gl.filter.hwe```)
+
+Simple examples how to apply some of the filters are provided below.
+
+
+1.	Filter on call rate, threshold = at least 95% loci called
+```{r}
+gl2 <- gl.filter.callrate(gl, method = "loc", threshold = 0.95)
+```
+
+2.	Filter individuals on call rate (threshold =90% )
+```{r}
+gl2 <- gl.filter.callrate(gl, method="ind", threshold = 0.90)
+
+```
+
+3.	Filter on reproducibility, threshold (here called t, do not ask why) 100% reproducible
+
+```{r}
+gl2 <- gl.filter.repavg(gl, t=1)
+```
+
+4.	Filter out multiple snps in single sequence tags (!!!!!produces an error currently!!!!!)
+```{r, eval=F, echo=F}
+gl2 <- gl.filter.secondary(gl)
+
+```
+
+5.	Filter out monomorphic loci
+
+```{r}
+gl2 <- gl.filter.monomorphs(gl, v=0)
+```
+
+
+
+6.	Filter out loci with trimmed sequence tags that are too similar (possible paralogues). Only works if TrimmedSequence is available in the loci metadata, therefore we use another test data set here.
+
+```{r}
+gl2 <- gl.filter.hamming(testset.gl, t=0.25, pb = F)
+```
+Note: This filter and its accompanying report function is slow when there are many loci. Recommended that it be applied after all other filtering, and only if less than 20,000 loci remain. May require an overnight run.
+
+Please note in the examples we always stored the resulting filter into a new ```genlight``` object ```gl2```, ```gl3``` etc. Though it is a bit of a waste in terms of memory, it avoids confusion which filter you have already applied. A series of filter could then look like:
+
+```{r, eval=F}
+gl2 <- gl.filter.callrate(gl, method = "loc", threshold = 0.95)
+gl3 <-  gl.filter.callrate(gl2, method="ind", threshold = 0.90)
+gl4 <- gl.filter.repavg(gl3, t=1)
+```
+
+Note that filters that result in the removal of populations or individual have optional parameters to request that the locus metadata be recalculated or for resultant monomorphic loci to be removed. Recalculation of the locus metadata is necessary because callrate, for example, will no longer be accurate once some individuals have been removed from the dataset.
+
+## Subsetting and Recoding Data
+
+## Population (=higher level grouping) reassignment
+
+Recall that the metadata file provided when the data are initially input contains information assigned to each individual including, often at a minimum, population assignment. There are various ways to reassign individuals to populations, rename populations or individuals, delete populations or individuals after the data have been read in to a genlight object. 
+
+
+The initial population assignments via the metafile can be viewed via:
+
+```{r}
+#population names (#30 populations)
+levels(pop(gl))
+#table on individuals per population
+table(pop(gl))
+
+```
+
+
+It is easy to create a barplot on the number of individuals per population:
+
+
+```{r, fig.height=5}
+barplot(table(pop(gl)), las=2)
+```
+
+If you have only a few reassignments, the simplest way is to use one or more of the scripts
+
+gl <- gl.keep.pop(gl, c(pop1, pop5, pop7))               # Retains only populations 1, 5 and 7
+gl <- gl.drop.pop(gl, c(pop2, pop3, pop4, pop6))         # Deletes populations 2, 3, 4, 6
+gl <- gl.merge.pop(gl, old=c("pop1","pop2"), new="pop1") # Merges populations 1 and 2 as pop1
+gl <- gl.merge.pop(gl, old=c("pop1"), new="outgroup")    # Renames population 1 to a population labelled outgroup
+
+Try these out for yourself.
+
+If only a few populations are involved, then the best option is to use the gl.drop.pop or gl.keep.pop functions.
+
+```{r, eval=FALSE}
+glnew3 <- gl.keep.pop(gl, pop.list=c("EmsubRopeMata","EmvicVictJasp"))
+```
+will delete all individuals in all populations except those listed.
+
+```{r, eval=FALSE}
+glnew3 <- gl.drop.pop(gl, pop.list=c("EmsubRopeMata","EmvicVictJasp"))
+```
+will delete all individuals in the listed populations.
+
+```{r, eval=FALSE}
+glnew3 <- gl.merge.pop(gl, old=c("EmsubRopeMata","EmvicVictJasp"), new="outgroup")
+```
+will reassign individuals in populations EmsubRopeMata and EmvicVictJasp to a new population called outgroup.
+
+```{r, eval=FALSE}
+glnew3 <- gl.merge.pop(gl, old="EmsubRopeMata", new="Emydura_victoriae")
+```
+will rename population EmvicVictJasp to Emydura_victoriae.
+
+Note that there is an option for recalculating the relevant individual
+metadata, and for removing resultant monomorphic loci.
+
+## Individual reassignment
+
+You can reassign individuals to new populations in a number of ways.A similar set of scripts apply to individuals.
+
+The initial individual labels entered at the time of reading the data into the genlight object can be viewed via:
+
+```{r}
+#individual names
+indNames(gl)
+
+```
+
+The individuals can be manipulated using
+
+gl <- gl.keep.ind(gl, c(ind1, ind5, ind7))               # Retains only individuals labelled ind1, 5 and 7
+gl <- gl.drop.pop(gl, c(ind2, ind3, ind4, ind6))         # Deletes populations 2, 3, 4, 6
+
+Try these out for yourself, by listing the individuals using indNames() and then deleting a selected few.
+
+```{r, eval=FALSE}
+glnew3 <- gl.keep.ind(gl, ind.list=c("AA019073","AA004859"))
+```
+will delete all individuals except those listed.
+
+```{r, eval=FALSE}
+glnew3 <- gl.drop.pop(gl, ind.list=c("AA019073","AA004859"))
+```
+will delete all individuals listed.
+
+## Recode tables
+
+Alternatively, reassignment and deletion of populations can be effected using a recode table, that is, a table stored as a csv file containing the old population assignments and the new population assignments as two columns. The quickest way to construct a recode table for an active genlight object is using
+
+```{r, eval=FALSE}
+gl.make.recode.pop(gl, outfile = "new_pop_assignments.csv")
+
+```
+
+```{block, type="hint"}
+Please note we are using the ```tempdir()``` to read/write files to a location in all examples. Feel free to change that to your needs by just providing a path to the folder of your liking. Normally, this would be your working directory specified with setwd().
+```
+
+
+This will generate a csv file with two columns, the first containing the existing population assignments, and the second also containing those assignments ready for editing to achieve the reassignments. This editing is best done in Excel.
+
+
+The population reassignments are then applied using:
+
+```{r, eval=FALSE}
+
+glnew <- gl.recode.pop(gl, pop.recode="new_pop_assignments.csv")
+
+```
+
+You can check that the new assignments have been applied with:
+
+```{r}
+levels(pop(gl))
+```
+
+```{block, type="task"}
+Try this using commands in the R editor to create the comma-delimited recode file, edit in in Excel to remove the Emmac prefix from populations, then apply it using the above command from the R editor. Check your results.
+```
+
+Another way of population reassignment is to use:
+
+```{r, eval=FALSE}
+
+glnew2 <- gl.edit.recode.pop(gl)
+
+```
+
+This command will bring up a window with a table showing the existing population assignments, with a second column available for editing. When the window is closed, the assignments will be applied. If you have optionally nominated a pop.recode file, a recode table will be written to file for future use.
+
+Again, you can check that the new assignments have been applied with ```levels(pop(gl))```.
+
+##Deleting populations with a recode table
+
+You can delete selected populations from a genlight object using the "Delete" keyword in the population recode file. By reassigning populations to Delete, you are flagging them for deletion, and when the recode table is applied, individuals belonging to those populations will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
+
+Again, you can check that the new assignments have been applied and requested populations deleted with ```levels(pop(gl))```.
+
+```{block, type="task"}
+Try deleting some populations, say the outgroup populations (EmsubRopeMata and EmvicVictJasp) using ```gl.edit.recode.pop()```from the R editor. Check your results for example using:
+
+```table(pop(gl))```
+```
+
+## Relabeling and deleting individuals with a recode table
+
+Recall that the genlight object contains labels for each individual. It obtains these names from the csv datafile provided by DArT at the time of reading these data in. There may be reasons for changing these individual labels - there may have been a mistake, or new names need to be provided in preparation for analyses to be included in publications. 
+
+Individual recode tables are csv files (comma delimited text files) that can be used to rename individuals in the genlight object or for deleting individuals from the genlight object.
+These population assignments can be viewed using
+
+```{r}
+#only first 10 entries are shown
+indNames(gl)[1:10]
+
+```
+
+The quickest way to rename individuals is to construct a recode table for an active genlight object is using 
+
+```{r, eval=FALSE}
+gl.make.recode.ind(gl, outfile="new_ind_assignments.csv")
+```
+
+This will generate a csv file with two columns, the first containing the existing individual names, and the second also containing those names ready for editing. This editing is best done in Excel.
+
+The population reassignments are then applied using
+```{r, eval=FALSE}
+glnew3 <- gl.recode.ind(gl, ind.recode="new_ind_assignments.csv")
+
+```
+
+You can check that the new assignments have been applied with ```indNames(gl)```
+
+Another way of individual reassignment is to use
+
+```{r, eval=F}
+gl <- gl.edit.recode.ind(gl, ind.recode="new_ind_assignments.csv")
+```
+
+This command will bring up a window with a table showing the existing individual labels, with a second column available for editing. When the window is closed, the renaming will be applied. If you have optionally nominated a ind.recode file, a recode table will be written to file for future use.
+Again, you can check that the new assignments have been applied with ```indNames(gl)```.
+
+## Deleting individuals
+
+You can delete selected individuals from a genlight object using the "Delete" keyword in the individual recode file. By renaming individuals to Delete, you are flagging them for deletion, and when the recode table is applied, those individuals will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
+
+Again, you can check that the new assignments have been applied and requested populations deleted with ```indNames(gl)```.
+
+Note that there are options for recalculating the relevant individual
+metadata, and for removing resultant monomorphic loci.
+
+## Recalculating locus metadata
+
+When you delete individuals or populations, many of the locus metadata (such as Call Rate) are no longer correct. You can recalculate the locus metadata using the script
+
+gl <- gl.recalc.metrics(gl)
+
+This is obviously important if you are drawing upon locus metadata in your calculations or filtering. The script will also optionally remove monomorphic loci.
+
+## Using R commands to manipulate the genlight object
+
+With your data in a genlight object, you have the full capabilities of
+the adegenet package at your fingertips for subsetting your data,
+deleting SNP loci and individuals, selecting and deleting populations,
+and for recoding to amalgamate or split populations.  Refer to the
+manual [Analysing genome-wide SNP data using adegenet] (http:
+//adegenet.r-forge.r-project.org/files/tutorial-genomics.pdf).  For example:
+
+```{r}
+gl_new <- gl[gl$pop!="EmmacBrisWive", ]
+```
+
+removes all individuals of the population EmmacBrisWive from the data
+set.
+
+Note that this manual approach will not recalculate the individual
+metadata nor will it remove resultant monomorphic loci. There are also
+some challenges with keeping the individual metadata matching the
+individual records (see below).
+
+The basic idea is here that we can use the indexing function ```[ ]``` on the genlight object ```gl``` to subset our data set by individuals(=rows) and loci(=columns) in the same manner as we can subset a matrix in R.
+
+For example:
+
+```{r}
+glsub <- gl[1:7, 1:3]
+glsub
+```
+
+Subsets the data to the first seven individuals and the first three loci.
+
+!!!Be aware that the accompanying meta data for individuals are subsetted, but the metadata for loci are not!!!!. So if you check the dimensions of the meta data of the subsetted data set via:
+
+```{r}
+dim(glsub@other$ind.metrics)
+
+dim(glsub@other$loc.metrics)
+```
+
+you see that the subsetting of the meta data for individuals worked fine (we have seven indivduals (=rows)).
+But we have still all the metadata for all loci (in the rows for the (=107 instead of 3).
+This "bug/feature" is how the adegenet package implemented the genlight object.
+
+To take care for the correct filtering for loci and individuals we suggest therefore to use the following approach:
+
+1. create an index for individuals (if you want to subset by individuals)
+2. create an index for loci (if you want to subset by loci))
+
+For example you want to have only individuals of two populations ("EmmacRussEube" or "EmvicVictJasp") and 30 randomly selected loci you could type:
+```{r}
+
+index.ind <- pop(gl)=="EmmacRussEube" | pop(gl)=="EmvicVictJasp"
+#check if the index worked
+table( pop(gl), index.ind)
+
+
+index.loc <- sample(nLoc(gl), 30, replace = F)
+index.loc
+
+```
+
+and then
+
+3. apply the indices to the genlight object and the meta data at the same time:
+
+```{r}
+glsub2 <- gl[index.ind, index.loc]
+glsub2@other$ind.metrics <- gl@other$ind.metrics[index.ind,] #not necessary
+glsub2@other$loc.metrics <- gl@other$loc.metrics[index.loc,] #necessary
+```
+
+We can check the result via:
+
+```{r}
+glsub2
+dim(glsub2@other$ind.metrics)
+dim(glsub2@other$loc.metrics)
+```
+
+For those not fully versed in R, there are the above {dartR} filters to achieve the same end and the advantage is that the filters do handle subsets of data correctly without any additional need to subset the meta data. The advantage of the R approach is that it is much more useful in case you want to script your analysis without intervention of a user when recoding your data set.
+
+
+
+
+#3. Population structure (11:00 - 11:45) [Arthur]
+
+# Visualisation
+
+Genetic similarity of individuals and populations can be visualized by way of Principal Coordinates Analysis (PCoA) ordination (Gower, 1966). Individuals (entities) are represented in a space defined by loci (attributes) with the position along each locus axis determined by genotype (0 for homozygous reference SNP, 2 for homozygous alternate SNP, and 1 for the heterozygous state). Alternatively, populations can be regarded as the entities to be plotted in a space defined by the loci, with the position along each locus axis determined by the relative frequency of the alternate allele. 
+
+Orthogonal linear combinations of the original axes are calculated and ordinated such that the first PCoA axis explains the most variation, PCoA-2 is orthogonal to PCoA-1 and explains the most residual variation, and so on. A scree plot of eigenvalues provides an indication of the number of informative axes to examine, viewed in the context of the average percentage variation explained by the original variables. The data are typically presented in two or three dimensions in which emergent structure in the data is evident. 
+
+## PCoA in ```dartR```
+
+The script ```gl.pcoa()```  is essentially a wrapper for ```glPca()``` of package ```adegenet``` with default settings apart from setting parallel=FALSE, converting the eigenvalues to percentages and some additional diagnostics.
+
+```{r}
+pc <- gl.pcoa(gl, nfactors=5)
+```
+
+Please note, in case you are using a non-windows system you can use the argument '''parallel=TRUE''', which speeds up the calculation.
+The resultant object pc contains the eigenvalues, factor scores and factor loadings that can be accessed for subsequent analyses.
+
+```{r}
+names(pc)
+```
+
+The eigenvalues give the scaling factor for the eigenvectors (PCoA axis 1 - n), the scores give the coordinates of the points (the entities, be they individuals or populations) in the new ordinated space, and the loadings give the correlations of the original variables (the loci) against the new axes. Loci that load high on axis 1 are influential in discrimination among the entities in the direction of axis 1.
+
+For example the percentage of variation the is represented by the axes can be calculated and visualised via:
+
+```{r}
+barplot(pc$eig/sum(pc$eig)*100, )
+```
+
+## Plotting the results of PCoA
+
+
+The results of the PCoA can be plotted using gl.pcoa.plot() with a limited range of options. The script is essentially a wrapper for plot {ggplot2} with the added functionality of {directlabels} and {plotly}. 
+
+The plotting script is not intended to produce publication quality plots, but should form a basis for importing the plots to illustrator for subsequent amendment.
+The command
+```{r, fig.height=5}
+gl.pcoa.plot(pc, gl, labels="pop", xaxis=1, yaxis=2)
+
+```
+
+You can see that this plot is very busy, and that the many labels are displaced quite some distance from their associated points.  This is because there is a tradeoff between avoiding overlap of the labels and proximity of the labels - you can use colour to identify which labels go with which points. 
+More sensibly, recoding populations would be in order. We could use
+
+```{r,eval=FALSE}
+glnew <- gl.edit.recode.pop(gl)
+```
+
+
+or using R 
+
+```{r}
+glnew <- testset.gl
+levels(pop(glnew)) <- c(rep("Coast",5),rep("Cooper",3),rep("Coast",5),
+rep("MDB",8),rep("Coast",7),"Em.subglobosa","Em.victoriae")
+gl.pcoa.plot(pc, glnew, labels="pop", xaxis=1, yaxis=2)
+```
+
+Note that we did not need to re run the PCoA analysis, only to recode the pop labels in the genlight object that we hand to the plotting routine. Much clearer plot now.
+
+There are other options for gl.pcoa.plot() that allow the axes to be scaled on the basis of proportion of variation explained, to select other combinations of axes to plot, and for adding confidence ellipses. Use the R help facility to explore these additional options. 
+
+Note that there is one point that seems intermediate between *Emydura macquarii* from the coast, and Emydura subglobosa (from northern Australia west of the Great Dividing Range). How do we find out what individual that point represents? Replot the data using labels="interactive" to prime the plot for analysis using ggplotly {plotly}:
+
+In case ggplotly is not installed, please type: 
+```{r, eval=FALSE}
+install.packages("devtools")
+library(devtools)
+install_github("hadley/ggplot2")
+library(ggplot2)
+```
+
+The commands
+
+
+```{r, eval=FALSE}
+gl.pcoa.plot(pc, glnew, labels="interactive", xaxis=1, yaxis=2)
+ggplotly()
+
+```
+
+will plot the individuals in the top two dimensions of the ordinated space, colour the points in accordance to the population to which they belong, and allow points to be identified interactively using the mouse.
+
+\includegraphics{images/ggplotly.png}
+
+Now moving the mouse over the point reveals its identity. The animal is AA19157, from the coastal populations, and further scrutiny reveals it is from the Barron River in northern Queensland. Seems there has been some allelic exchange there.
+
+## The Scree Plot
+
+The number of dimensions with substantive information content can be determined by examining a scree plot (Cattell, 1966).
+
+```{r, fig.height=4}
+gl.pcoa.scree(pc)
+```
+
+This plot, by default, will show the percentage variation in the data explained by each axis successively where the amount of variation is substantive. By substantive, I mean explaining more than the original variables did on average. 
+As a rule of thumb, one should examine all dimensions that explain more than 10% of the variation in the data.
+
+## 3D Plot
+
+Should you find that 2 dimensions are insufficient to capture all substantive variation, you can examine a plot of PCoA axis 2 against axis 1 and axis 3 against axis 1 and so on, taking care to note the proportion of variation explained by each axis. Alternatively, when the data cluster tightly, additional dimensions can be examined by removing all individuals from the analysis except those belonging to a single cluster and re-running the PCoA (Georges and Adams, 1992).
+If three dimensions are indicated by the scree plot, as in our current case, an interactive 3D plot can be produced
+
+```{r, eval=FALSE}
+gl.pcoa.plot.3d(pc, glnew) #does not work on cluster
+
+```
+\includegraphics{images/plot3d.png}
+
+
+Note that the plot appears in a new window, outside R Studio, and that it is interactive in the sense that you can rotate the plot using the mouse to obtain the most discriminatory view.
+
+This function is essentially a wrapper for the corresponding function in {pca3d}, adding percentage variation explained to each axis and fixing some parameters.
+
+
     
-  
-#3. Population structure (11:00 - 11:45)
-    -	PCoA
-    - phylogenetic trees
-    - [snapclust]
-    - fixed differences
+    - phylogenetic analysis
+    
+        - concatonation sequence tags
+        - distance meassures
+        - svdquartetts
+        - treemix
+        - fixed differences
 
-#4. Population assignment (11:45 - 12:15)
+#4. Population assignment (11:45 - 12:15) [Arthur]
 
-#5. Landscape genetics (12:45 - 13:15)
-    - isolation by distance
-    - landscape resistance
+        
+
+#5. Landscape genetics (12:45 - 13:15) [Bernd]
+    
+The idea of a landscape genetic analysis is that genetic similarity is between individuals/populations is dependent on the distance between individuals and [potentially] on the "resistance" of the landscape between individuals/populations. 
+
+For this example we first load a data set called possums, which is already in genlight format.
+
+```{r, eval=FALSE}
+possums <- readRDS("./data/scratch/gsa/possums.rdata")
+```
+
+
+```{r, echo=F}
+possums <- readRDS("./data/possums.rdata")
+```
+
+
+
+```{block, type="task"}
+
+1. Study the possum genlight object (how many individuals per population)
+2. Overall how many loci are  in the data set?
+
+```
+
+
+## Isolation by distance
+
+The "null model" in landscape genetics is that there is a simple relationship between genetic and euclidean distance. A standard procedure is to study the relationship between log(euclidean distance) and Fst/1-Fst (see ?gl.ibd for details). For a quick check we can use the ```gl.ibd```. To be able to use the function the genlight object needs to have the coordinates for each individual in the ```@other$latlong``` slot. Further we need to provide information if the coordinates are already projected or given in lat/lon.
+
+
+```{r}
+
+iso <- gl.ibd(possums, projected = TRUE)
+
+```
+
+
+The function returns a list of the following components: Dgen (the genetic distance matrix), Dgeo (the Euclidean distance matrix), mantel (the statistics of the mantel test)
+
+A mantel test is basically a simple regression, but the significance takes the non-independence of pairwise distances via a bootstrap approach into account.
+
+
+## Landscape genetics using a landsacpe restistance approach
+
+Often ecologists want to know if a particular landscape feature is affecting population structure on top of Euclidean distance. The idea is that a particular feature is causing some cost for individuals when moving through it, hence modifying the actual euclidean distance between individuals/populations. Commonly used approaches to calculate so-called cost-distances are the "least-cost" and "circuitscape" approach. 
+Both approaches require a landscape that represents landscape features in terms of the "resistance" values
+
+## Calculation of cost distances
+
+In this example we use populations as the entity of interest. Hence we need to calculate three distance matrices, namely a Euclidean distance matrix, a cost distance matrix and finally a genetic distance matrix. The two distance matrices can then be used (very similar to the partial mantel test above) to compete against each other how well they explain genetic distances. As mentioned we base our analysis on indviduals, therefore we first need to calculate the coordinates of our population centers. But first we load our (resistance) landscape.
+
+
+```{r, echo=F}
+
+landscape <- readRDS("./data/landscape.rdata")
+
+```
+
+```{r, eval=F}
+landscape <- readRDS(("/data/scratch/GSA/landscape.rdata"))
+```
+
+We calculate the population centers via:
+
+```{r, fig.height=5}
+
+xs <- tapply(possums@other$latlong[,"lon"], pop(possums), mean)
+ys <- tapply(possums@other$latlong[,"lat"], pop(possums), mean)
+
+plot(landscape)
+points(xs, ys, pch=16)
+text(xs, ys, popNames(possums), col="orange")
+
+coords <- cbind(xs, ys)
+
+```
+
+## Euclidean distance
+```{r}
+eucl <- as.matrix(dist(coords))
+```
+
+
+## Costdistances
+```{r}
+library(PopGenReport)
+cost <- costdistances(landscape = landscape, locs = coords, method = "leastcost", NN=8)
+```
+
+
+## genetic distance
+For simplicity we will use pairwise Fsts between population here
+
+
+```{r}
+library(StAMPP)
+gd <-as.matrix(as.dist(stamppFst(possums, nboots=1)))
+```
+
+
+And finally run a partial mantel test
+
+```{r}
+wassermann(gen.mat = gd, eucl.mat = eucl, cost.mats = list(cost=cost),plot = F)
+```
+
+
+Library PopGenReport has a convinience function that does all in once, but is less flexible Please note we need to transform the possums genlight to a genind object.
+It has the benefit that it shows the actual least cost path in the landscape (but runs longer).
+
+
+```{r, fig.height=5}
+
+pgi <-gl2gi(possums)
+glc <- genleastcost(pgi, fric.raster = landscape, gen.distance = "D", NN = 8, pathtype = "leastcost")
+
+```
+
+
+
 
 #6. Export data set to other formats (13:15-13:45)
-    - how to send a genlight objectto a friend
-    - FASTA
-    - STRUCTURE, fastSTRUCTURE, NewHybrid
+
+## Send to a friend
+
+
+```{r, eval=FALSE}
+saveRDS(gl, file="gl.rds")
+
+mygl <- readRDS("gl.rds")
+
+```
+
+
+All export functions start with gl2....
+
+
+
+
+function  |   explanation
+----------------- | -----------------------------------------------------
+	 gl2fasta  | Concatenates DArT trimmed sequences and outputs a fastA file
+   gl2shp  | creates a shp file to be used with ArcGIS and the like
+   gl2structure | creates a file to be use with structure
+   gl2faststrcture | creates an input file to be used with faststructure
+   gl2svdquartets  | Convert a genlight object to nexus format PAUP SVDquartets
+   gl.nhybrids  | runs a newhybrids analysis (needs to be installed)
+   gl2gi   |   converts a genlight to a genind object 
+
+
+   
+
+
+
+## Fasta file
+
+#check methods
+
+
+```{r, eval=FALSE}
+gl2fasta(testset.gl[1:5,1:7], method=1)
+
+```
+
+
+
+
+## FastSTRUCTURE
+
+STRUCTURE is one of the most widely used population analysis tools that allows researchers to assess patterns of genetic structure in a set of samples (Porras-Hurtado et al., 2013). STRUCTURE is freely available software for population analysis (Pritchard et al., 2000). STRUCTURE analyses differences in the distribution of genetic variants amongst populations and places individuals into groups where they share similar patterns of variation. STRUCTURE both identifies populations from the data and assigns individuals to those populations. FastSTRUCTURE is an improved implementation to analyse large quantities of data (Raj et al., 2014).
+
+To generate an input file for fastSTRUCTURE, use the function (this format can also be used for input to STRUCTURE, though the meta data options are not supported yet):
+
+```{r, eval=FALSE}
+gl2faststructure(gl, outfile=file.path(tempdir(),"myfile.fs"), probar = FALSE)
+```
+
 
