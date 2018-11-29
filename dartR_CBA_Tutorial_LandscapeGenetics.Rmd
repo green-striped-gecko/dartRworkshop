@@ -407,7 +407,7 @@ Is there now a significant effect of the landscape on the population structure.
 
 **Example:**
 We are interested how many generation is takes until the average Fst values becomes so "different", that the effect of the resistance approach can be detected.
-We create a loop and calculate mean pairwise Fst values every 20 generations (up to 100). We plot generations against average pairwise Fst and colour the dots by the significance of the Mantel test.
+We create a loop and calculate mean pairwise Fst values every 20 generations (up to 181). We plot generations against average pairwise Fst and colour the dots by the significance of the Mantel test.
 
 
 ```{r, eval=FALSE}
