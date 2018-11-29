@@ -289,7 +289,7 @@ para$disp.rate = 0.1 #proportion of dispersing individuals
 
 #Define genetics [create 100 SNPs]
 para$n.allels <- 2
-para$n.loci <- 500  
+para$n.loci <- 200  
 para$mut.rate <- 0.00001
 ```
 
@@ -407,7 +407,7 @@ Is there now a significant effect of the landscape on the population structure.
 
 **Example:**
 We are interested how many generation is takes until the average Fst values becomes so "different", that the effect of the resistance approach can be detected.
-We create a loop and calculate mean pairwise Fst values every 20 generations (up to 181). We plot generations against average pairwise Fst and colour the dots by the significance of the Mantel test.
+We create a loop and calculate mean pairwise Fst values every 5 generations (up to 100). We plot generations against average pairwise Fst and colour the dots by the significance of the Mantel test.
 
 
 ```{r, eval=FALSE}
@@ -429,7 +429,7 @@ mantelp <- as.numeric(temp.mantel$mantel.tab["1","p"])
 res <- data.frame(generation=1, fst=tempfst, mantelp)
 for (i in 2:10)
 {
-simpops <- run.popgensim(simpops, steps=20, cost.mat,
+simpops <- run.popgensim(simpops, steps=2, cost.mat,
                          n.offspring=para$n.offspring,n.ind=para$n.ind,
                          para$mig.rate, para$disp.max, para$disp.rate,
                          para$n.allels, para$mut.rate,
@@ -444,19 +444,19 @@ temp.mantel <- wassermann(gen.mat =gensim.mat , eucl.mat = glc$eucl.mat,  cost.m
 mantelp <- as.numeric(temp.mantel$mantel.tab["1","p"])
 
 
-res[i,] <- c((i-1)*20+1, tempfst, mantelp)
+res[i,] <- c((i-1)*2+1, tempfst, mantelp)
 
-cat(paste("Generation:", (i-1)*20+1,"\n"))
+cat(paste("Generation:", (i-1)*2+1,"\n"))
 
  }
 
-plot(res$generation, res$fst, col=(res$mantelp<0.05)+1)
+plot(res$generation, res$fst, col=(res$mantelp<0.05)+1, pch=16)
 
-
+res
 
 ```
 
-
+\includegraphics{images/sim.png}
 
 
 ```{block, type="task"}
@@ -520,11 +520,10 @@ plot(map.raster)
 ```
 
 
-Obiously this is not a very suitable map.
+Obiously this is not a very suitable map, basically colors (the amount of red of each pixel is converted into resistance)
 
-
-
-## 
+To make it a bit more realistic we want to convert the ocean (values around 150) to 
+As we can see the ocean has a value around 150 we aim
 
 
 
