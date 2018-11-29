@@ -50,64 +50,17 @@ What it this tutorial about?
 
 In this workshop we provide an overview on the use of a recently developed R-package (dartR) that aims to integrate as many as possible ways to analyse SNP data sets. 
 ^[A general overview on the package (though quite a few new function have been added can be found here: [Gruber et al. 2018: https://onlinelibrary.wiley.com/ doi/full/ 10.1111/1755-0998.12745](https://onlinelibrary.wiley.com/doi/full/10.1111/1755-0998.12745)].
+You should also have a copy of the DartBook next to you so you can refer to a more detailed description of the functions and the package.
 
-Below here you will find exercises that should get you familiar with the package. Feel free to use the provided sample data or use you own data.
-For a detailed description please refer to the dartRbook provided.
+Below here you will find exercises that should get you familiar with the package. There is some explanatory text, but mainly you will be asked to apply your gained knowledge by solving the tasks outlined in those boxes:
 
-#Overview 
-**Tuesday **
+```{block, type="task"}
 
+1. Whenever you see such a box, the idea is that you try to run and answer the questions.
 
-1. Preparing data sets 
+```
 
-1.1 Loading data sets into R (DArT format)
-
-1.2 How to load other formats
-
-  
-2. The genlight object 
-
-2.1 Explore a genlight object
-
-2.2 quality filter your data 
-
-2.3 subset/recode your data set
-
-
-3. Visualisation 
-
-3.1. PCoA
-
-3.2. Genomic relatedness matrix
-
-3.3. Mapping your data
-    
-    
-    
-**Wednesday**
-    
-4. Population genetics 
-
-4.1. Heterozygosity
-
-4.2. HWE
-
-4.3. Private and fixed alleles
-  
-5. Landscape genetics 
-
-5.1 Isolation by distance
-
-5.2 Landscape resistance
-
-
-6. Export data set to other formats/packages 
-
-6.1 saving a genlight object
-
-6.2 FASTA
-
-6.3 STRUCTURE, fastSTRUCTURE, NewHybrid
+Feel free to use the provided sample data or use you own data.
 
 
 \newpage
@@ -117,9 +70,6 @@ For a detailed description please refer to the dartRbook provided.
 
 Please refer to the manual or the github page in case you have not yet installed the package dartR on your computer.
 https://github.com/green-striped-gecko/dartR
-
-
-**Please note: For this workshop you need to install the github version (which has some additional functions) to be able to run all code examples.**
 
 The code to do so is:
 
@@ -138,20 +88,19 @@ Once installed the command below should run without error: (warnings are most of
 library(dartR)
 ```
 
-You should have version ```r packageVersion("dartR")``` installed.
+You should have version ```r packageVersion("dartR")``` installed otherwise some code might not run, because the functions are missing.
 
 ```{r}
 packageVersion("dartR")
 ```
 
+\newpage
+
 #1. Preparing data sets 
 
-## 1.1. Loading data sets into R (DArT format)
+## 1.1. Loading data sets into R (DArT format to genlight)
 
-
-## Reading DArT Files into a Genlight Object
-
-SNP data can be read into a genlight object using gl.read.dart(). This function intelligently interrogates the input csv file to determine
+SNP data can be read into a genlight object using gl.read.dart(). This function intelligently interrogates the input csv file to determine which can of format you got from DArt (one row, two row format).
 
 For a test we will use the inbuild files. They are stored in your package under:
 
@@ -171,9 +120,11 @@ dir(fp)
 
 3. Is there sequence information stored? Under which header (the default should be TrimmedSequence)?
 
+4. Look at the other metrics provided and try to make sense of them.
+
 ```
 
-You can load the data and convert it into a genlight object (the format supported by all dartR functions) via the following code:
+You can load the data and convert it into a genlight object via the following code:
 
 ```{r}
 #create the path to the file
@@ -183,18 +134,16 @@ gl <- gl.read.dart(filename = fn, probar = F)
 
 ```
 
-Now all the data from this file is stored into a genlight object ^[for a detailed description of this format please refer to the workshop manual.]. In brief the genlight format allows to store large data sets very efficiently (compacted) and at the same time allows to interrogate the data set very conviniently via accessors. 
+Now all the data from this file is stored into a genlight object ^[for a detailed description of this format please refer to the dartBook.]. In brief the genlight format allows to store large data sets very efficiently (compacted) and at the same time allows to interrogate the data set very conviniently via accessors. 
 
-We can inspect if the has been read correctly by typing the name of the object: ```gl```.
+We can inspect if the file has been read correctly by typing the name of the object: ```gl```.
 
 ```{r}
 gl
 ```
 
 
-A bit of R background. This ```gl``` object is a so called S4 object, which is R's attempt to implement object oriented programming. The main message is that you need to use the '@' sign to access its slots (sub-components) [if no accessor function exists].
-
-
+A bit of R background. This ```gl``` object is a so called S4 object, which is R's attempt to implement object oriented programming. The main message is that you need to use the '@' sign to access its slots (sub-components) [if no accessor function exists] and for sub-sub components, it is the '$' sign.
 
 Let's have a look at the other slots:
 ```{r}
@@ -207,19 +156,19 @@ There are more slots in the genlight object (type gl) For some slots accessors e
 position(), indNames(), locNames(), ploidy() are accessors, but there are none for 
 ```\@loc.all, \@other, \@gen```.
 
-Inspect all the content in those slots to get an overview on the data set. Here it might be helpful to employ functions such as 
+1. Inspect all the content in those slots to get an overview on the data set. Here it might be helpful to employ functions such as 
 ```summary(), table()``` 
 or to visualise 
 ```barplot(), hist()```.
 
 
-No you can try also to load your own data set into R (if it is in DArT format)
+Now you can try also to load your own data set into R (if it is in DArT format)
 
 
 ```
 
 
-You might wonder where is the SNP data actually stored and have explored the \@gen slot, which contains that information, but still in a not easy accessible format (class SNPbin). To support here a a very important additional function for genlight objects is the as.matrix() function. It converts the SNP information in a matrix of individuals/samples across the rows and loci across the columns. The entries are either 0, 1, 2 or NA and represent the frequency of the second allele for that individual at that loci.^[Please refer to the workbook for a detailed description of this matrix]. 
+You might wonder where is the SNP data actually stored and have explored the \@gen slot, which contains that information, but still in a not easy accessible format (class SNPbin). A very important additional function for genlight objects is the ```as.matrix()``` function. It converts the SNP information in a matrix of individuals/samples across the rows and loci across the columns ^[This is different to the format in the dart csv  file!!!.] The entries are either 0, 1, 2 or NA and represent the frequency of the second allele for that individual at that loci.^[Please refer to the workbook for a detailed description of this matrix]. 
 
 
 
@@ -232,8 +181,10 @@ as.matrix(gl[1:10, 1:3])
 
 ```
 
-As you have seen above you can subset your data using the indexing function [ , ].
 
+```{block, type="hint"}
+As you have seen above you can subset your data using the indexing function [ , ].
+```
 
 ```{r}
 #first individual, loci 1 to 5.
@@ -246,14 +197,14 @@ as.matrix(gl[1,1:5])
 
 1. Use the indexing function to inspect the loci the individuals 7 to 9, for loci 1 to 4.
 
-2. Create a table on the genotypes for the first 10 individuals. How many heterozygote loci are there? [12]
+2. Create a table on the genotypes for the first 10 individuals. How many heterozygote loci are there? 
 
 
 ```
 
-## Explore loci metrics
+**Explore loci metrics**
 
-If you have inspected the provided file or your own data you noticed that dart provides additional data on the quality and contenct of loci. Those metrics can be used to filter loci by quality (CallRate) or information content (minor allele frequence). The information is also stored in the genlight object under the slot ```\@other$loc.metrics```. 
+If you have inspected the provided CSV file or your own data you noticed that dart provides additional data on the quality and contenct of loci. Those metrics can be used to filter loci by quality (CallRate) or information content (minor allele frequence). The information is also stored in the genlight object under the slot ```\@other$loc.metrics```. 
 
 ```\@other$loc.metrics``` is a data.frame (a table in R), that has a **row** for each SNP loci. You can explore those entries via:
 ^[A complete overview of each of the loci metrics is provided in the manual.]
@@ -277,16 +228,16 @@ hist(gl@other$loc.metrics$RepAvg)
 ```
 
 
-## Add ind.metrics
+**Add ind.metrics**
 
-As you might noticed there is no information on the individuals provided in the file on the SNP loci. For example there is the accessor ```nPop()``` which returns the number of populations in your data set.
+As you might noticed there is no information on the individuals/samples provided in the file on the SNP loci. For example there is the accessor ```nPop()``` which returns the number of populations in your data set. 
 
 ```{r}
 nPop(gl)
 ```
 
-As none was provided yet we need to learn how to do so.
-This information has to be provided with a second file that has as the most important column the id of the individuals that needs to match those in the SNP file you received from dart.
+As no information was provided yet, we need to learn how to do so.
+This information has to be provided with a second file that has - as the most important column - the id of the individuals that needs to match **exacttly** those in the SNP file you received from DArT.
 As an example there is a data set provided within the dartR package **testset_metadata.csv**:
 
 ```{r}
@@ -351,23 +302,24 @@ gl.map.interactive(gl)
 
 
 
-## 1.2 How to load other formats
+1.2 How to import other formats to genlight**
 
-**Hint**
+```{block, type="hint"}
+
 This section is an example how you can load your data and convert it into a genlight object if you do not have data provided by DArT. It demonstrates the principle how that can be achieved, but your data set might be in a very different format. Please ask the tutors in case you got stuck and do not know how to load your data set.
+```
 
-
-There are many ways to load data sets of other types into R. The main aim you want to achieve, is to resemble the structure of the genlight object as closely as possible, as it allows you to work with dartR and use most of the functions.
+There are many ways to load data sets of other types into R. The main aim you want to achieve is, to resemble the structure of the genlight object as closely as possible, as it allows you to work with dartR and use most of its functions.
 
 The idea is "simple", we first create a genlight object that stores the SNP data and then we add the relevant loci and individual metrics to the required slots.
 
-Below is a table from the publication of the package:[Gruber et al. 2018: https://onlinelibrary.wiley.com/doi/full/ 10.1111/1755-0998.12745](https://onlinelibrary.wiley.com/doi/full/10.1111/1755-0998.12745)].
+Below is a table from the publication of the package, which suggests several possible ways to import data:[Gruber et al. 2018: https://onlinelibrary.wiley.com/doi/full/ 10.1111/1755-0998.12745](https://onlinelibrary.wiley.com/doi/full/10.1111/1755-0998.12745)].
 
 ```{r, out.width="110%", fig.align='left', fig.cap='', fig.fullwidth=TRUE, echo=FALSE}
 knitr::include_graphics('images/imports.png')
 ```
 
-You can see there are some options available and most of the use the gi2gl function, hence we will follow this idea and use the read.genetable version.
+You can see there are some options available and most of them use the gi2gl function, hence we will follow this idea and use the read.genetable version.
 
 Again there is an example data set provided in the package, called platy.csv in the package folder.
 
@@ -386,9 +338,9 @@ Explore the file platy.csv using Excel, Calc etc.
 
 The data set is a "mockup" data set of 13 samples of platypus in Tasmania and the SNPs are provided in the format A/A (meaning at this loci the individual was homozygot for A). The data set stores also information on populations, lat long and some additional information on sex (called group) and age. 
 
-To load this data set we will use the function read.genetable from package PopGenReport (an excellent package if you wanted to study Microsatellites ;-) or only a few SNPs).
+To load this data set we will use the function ```read.genetable``` from package ```PopGenReport``` (an excellent package if you want to study STR markers (microsatellites) ;-) or only a few SNPs).
 
-The function has some arguments that are explained in detail via its help pages ?read.gene.table. There you can specify the columns where the ids of individuals are, the pop, lat, long column and also how the locis are coded (in one or two colums, what kind of seperator between loci and how missing values are coded.)
+The function has some arguments that are explained in detail via its help pages ```?read.gene.table```. There you can specify the columns where the ids of individuals are, the pop, lat, long column and also how the loci are coded. ^[in one or two colums, what kind of seperator between loci and how missing values are coded.]
 
 ```{r, message=FALSE, warning=FALSE}
 #load the package 
@@ -412,12 +364,15 @@ platy.gl
 
 ```{block, type="task"}
 
-You can now explore the data set ```platy.gl```. As you can see some of the slots are filled in (e.g. ```pop(), indNAmes()```), but most are empty. 
+1. You can now explore the data set ```platy.gl```. As you can see some of the slots are filled in (e.g. ```pop(), indNAmes()```), but most are empty. 
+
+2. How are populations defined? 
+3. Can you create an interactive map?
 
 ```
 
 There is no slot called \@loc.metrics or \@ind.metrics, which are necessary for some functions. 
-For example we have information of the individuals in the slot \@other$data. 
+For example we have information on the individuals in the slot \@other$data. 
 
 We can simply copy those slots in the right position via:
 
@@ -425,7 +380,7 @@ We can simply copy those slots in the right position via:
 platy.gl@other$ind.metrics <- platy.gl@other$data
 ```
 
-As you may remember, we do have quite some meta data on loci and we can create those via:
+We do not have metrics on loci, but we we can create those via:
 
 ```{r}
 platy.gl <- gl.recalc.metrics(platy.gl)
@@ -456,7 +411,7 @@ position(platy.gl)<- "numeric vector of SNP positions (starting at zero)"
 ```{block, type="task"}
 
 1. If you have your own data set. Load it into R to convert it into a genlight object (with individual covariates in a second file). Explore your data set using the functions and framework explained above.
-2. In case you did not bring your own data explore the data set ```foxes.gl``` by just type foxes.gl into the console and apply the function learned above.
+2. In case you did not bring your own data, explore the data set ```foxes.gl``` by just type foxes.gl into the console and apply the function learned above.
 
 Questions you might tackle are:
 
@@ -464,15 +419,15 @@ Questions you might tackle are:
 - How many individuals/samples do I have?
 - Do I have all the necessary loc.metrics (TrimmedSequence) for my analysis?
 - What kind of individual metrics do I have?
+- Plot the whole data set and investigate individuals with missing data.
 
 ```
-
+\newpage
 
 #2. The genlight object 
 
 
 ##2.1 Explore a genlight object
-
 
 A nice way to get an overview on the object (=whole matrix) is to use:
 
@@ -500,13 +455,12 @@ Calculates the allele frequency of the second allele for all loci.
 
 The individuals are plotted in the order they are stored in the genlight object. 
 2. Reorder the individuals alphabetically by population using the ```order``` function and plot it again.
-
 ```
 
 
 
 
-2.2 quality filter your data 
+##2.2 Filter your data (by Quality/Ecology)
 
 It is now time to think about your analysis and based on that, what kind of filters you want to apply previous to your analysis.
 
@@ -532,7 +486,8 @@ function  |   explanation
 
 ```{block, type="hint"}
 Refer to the help pages of each function for details on the parameters ```?nameoffunction```.
-Be aware the some of the function require additional parameters/thresholds to work properly. For example if you want to filter on CallRate you need to provide a threshold that is acceptable for you.
+
+Be aware that some of the function require additional parameters/thresholds to work properly. For example if you want to filter on CallRate you need to provide a threshold that is acceptable for you.
 
 
 ```
@@ -559,9 +514,9 @@ Additional filters to apply could be for excluding possible loci under selection
 ```
 
 
-2.3 subset/recode your data set
+##2.3 Subset/recode your data set
 
-Recall that the metadata file provided when the data are initially input contains information assigned to each individual including, often at a minimum, population assignment. There are various ways to reassign individuals to populations, rename populations or individuals, delete populations or individuals after the data have been read in to a genlight object. 
+Very often you want to subset your data set (e.g. only looking at females or certain population). There are various ways to reassign individuals to populations, rename populations or individuals, delete populations or individuals after the data have been read in to a genlight object. 
 
 
 The initial population assignments via the metafile can be viewed via:
@@ -576,18 +531,17 @@ table(pop(gl))
 
 ```
 
+```{block, type="task"}
 
-It is easy to create a barplot on the number of individuals per population:
+1. Create a barplot on the number of individuals per population.
 
-
-```{r, fig.height=3}
-barplot(table(pop(gl)), las=2)
 ```
+
 
 If you have only a few reassignments, the simplest way is to use one or more of the functions below
 
 
-```{block, type="task"}
+```{block, type="hint"}
 
 Try these out for yourself: 
 
@@ -600,7 +554,7 @@ gl.merge.pop()
 If only a few populations are involved, then the best option is to use the gl.drop.pop or gl.keep.pop functions.
 ```
 
-## Individual reassignment
+**Individual reassignment**
 
 
 The initial individual labels entered at the time of reading the data into the genlight object can be viewed via ^[Please note only first 10 entries are shown here]:
@@ -633,7 +587,7 @@ Try these out for yourself, by listing the individuals using indNames() and then
 ```
 
 
-## Recode tables
+**Recode tables**
 
 Alternatively, reassignment and deletion of populations can be effected using a recode table, that is, a table stored as a csv file containing the old population assignments and the new population assignments as two columns. The quickest way to construct a recode table for an active genlight object is using
 
@@ -660,304 +614,16 @@ glnew <- gl.recode.pop(gl, pop.recode="new_pop_assignments.csv")
 
 You can check that the new assignments have been applied with:
 
-```{r}
-levels(pop(gl))
-```
-
-```{block, type="task"}
-
-Try these using commands in the R editor to create the comma-delimited recode file, edit in in Excel to remove the Emmac prefix from populations, then apply it using the above command from the R editor. Check your results.
-```
-
-Another way of population reassignment is to use:
-
-```{r, eval=FALSE}
-
-glnew2 <- gl.edit.recode.pop(gl)
-
-```
-
-This command will bring up a window with a table showing the existing population assignments, with a second column available for editing. When the window is closed, the assignments will be applied. If you have optionally nominated a pop.recode file, a recode table will be written to file for future use.
-
-Again, you can check that the new assignments have been applied with ```levels(pop(gl))```.
-
-##Deleting populations with a recode table
-
-You can delete selected populations from a genlight object using the "Delete" keyword in the population recode file. By reassigning populations to Delete, you are flagging them for deletion, and when the recode table is applied, individuals belonging to those populations will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
-
-Again, you can check that the new assignments have been applied and requested populations deleted with ```levels(pop(gl))```.
-
-```{block, type="task"}
-Try deleting some populations, say the outgroup populations (EmsubRopeMata and EmvicVictJasp) using ```gl.edit.recode.pop()```from the R editor. Check your results for example using:
-
-```table(pop(gl))```
-
-```
-
-## Relabeling and deleting individuals with a recode table
-
-Recall that the genlight object contains labels for each individual. It obtains these names from the csv datafile provided by DArT at the time of reading these data in. There may be reasons for changing these individual labels - there may have been a mistake, or new names need to be provided in preparation for analyses to be included in publications. 
-
-Individual recode tables are csv files (comma delimited text files) that can be used to rename individuals in the genlight object or for deleting individuals from the genlight object.
-These population assignments can be viewed using
-
-```{r}
-#only first 10 entries are shown
-indNames(gl)[1:10]
-
-```
-
-The quickest way to rename individuals is to construct a recode table for an active genlight object is using 
-
-```{r, eval=FALSE}
-gl.make.recode.ind(gl, outfile="new_ind_assignments.csv")
-```
-
-This will generate a csv file with two columns, the first containing the existing individual names, and the second also containing those names ready for editing. This editing is best done in Excel.
-
-The population reassignments are then applied using
-```{r, eval=FALSE}
-glnew3 <- gl.recode.ind(gl, ind.recode="new_ind_assignments.csv")
-
-```
-
-You can check that the new assignments have been applied with ```indNames(gl)```
-
-Another way of individual reassignment is to use
-
-```{r, eval=F}
-gl <- gl.edit.recode.ind(gl, ind.recode="new_ind_assignments.csv")
-```
-
-This command will bring up a window with a table showing the existing individual labels, with a second column available for editing. When the window is closed, the renaming will be applied. If you have optionally nominated a ind.recode file, a recode table will be written to file for future use.
-Again, you can check that the new assignments have been applied with ```indNames(gl)```.
-
-## Deleting individuals
-
-You can delete selected individuals from a genlight object using the "Delete" keyword in the individual recode file. By renaming individuals to Delete, you are flagging them for deletion, and when the recode table is applied, those individuals will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
-
-Again, you can check that the new assignments have been applied and requested populations deleted with ```indNames(gl)```.
-
-Note that there are options for recalculating the relevant individual
-metadata, and for removing resultant monomorphic loci.
-
-## Recalculating locus metadata
-
-When you delete individuals or populations, many of the locus metadata (such as Call Rate) are no longer correct. You can recalculate the locus metadata using the script
-
-gl <- gl.recalc.metrics(gl)
-
-This is obviously important if you are drawing upon locus metadata in your calculations or filtering. The script will also optionally remove monomorphic loci.
-
-## Using R commands to manipulate the genlight object
-
-With your data in a genlight object, you have the full capabilities of
-the adegenet package at your fingertips for subsetting your data,
-deleting SNP loci and individuals, selecting and deleting populations,
-and for recoding to amalgamate or split populations.  Refer to the
-manual [Analysing genome-wide SNP data using adegenet] (http:
-//adegenet.r-forge.r-project.org/files/tutorial-genomics.pdf).  For example:
-
-```{r}
-gl_new <- gl[gl$pop!="EmmacBrisWive", ]
-```
-
-removes all individuals of the population EmmacBrisWive from the data
-set.
-
-Note that this manual approach will not recalculate the individual
-metadata nor will it remove resultant monomorphic loci. There are also
-some challenges with keeping the individual metadata matching the
-individual records (see below).
-
-The basic idea is here that we can use the indexing function ```[ ]``` on the genlight object ```gl``` to subset our data set by individuals(=rows) and loci(=columns) in the same manner as we can subset a matrix in R.
-
-For example:
-
-```{r}
-glsub <- gl[1:7, 1:3]
-glsub
-```
-
-Subsets the data to the first seven individuals and the first three loci.
-
-!!!Be aware that the accompanying meta data for individuals are subsetted, but the metadata for loci are not!!!!. So if you check the dimensions of the meta data of the subsetted data set via:
-
-```{r}
-dim(glsub@other$ind.metrics)
-
-dim(glsub@other$loc.metrics)
-```
-
-you see that the subsetting of the meta data for individuals worked fine (we have seven indivduals (=rows)).
-But we have still all the metadata for all loci (in the rows for the (=107 instead of 3).
-This "bug/feature" is how the adegenet package implemented the genlight object.
-
-To take care for the correct filtering for loci and individuals we suggest therefore to use the following approach:
-
-1. create an index for individuals (if you want to subset by individuals)
-2. create an index for loci (if you want to subset by loci))
-
-For example you want to have only individuals of two populations ("EmmacRussEube" or "EmvicVictJasp") and 30 randomly selected loci you could type:
-```{r}
-
-index.ind <- pop(gl)=="EmmacRussEube" | pop(gl)=="EmvicVictJasp"
-#check if the index worked
-table( pop(gl), index.ind)
-
-
-index.loc <- sample(nLoc(gl), 30, replace = F)
-index.loc
-
-```
-
-and then
-
-3. apply the indices to the genlight object and the meta data at the same time:
-
-```{r}
-glsub2 <- gl[index.ind, index.loc]
-glsub2@other$ind.metrics <- gl@other$ind.metrics[index.ind,] #not necessary
-glsub2@other$loc.metrics <- gl@other$loc.metrics[index.loc,] #necessary
-```
-
-We can check the result via:
-
-```{r}
-glsub2
-dim(glsub2@other$ind.metrics)
-dim(glsub2@other$loc.metrics)
-```
-
-For those not fully versed in R, there are the above {dartR} filters to achieve the same end and the advantage is that the filters do handle subsets of data correctly without any additional need to subset the meta data. The advantage of the R approach is that it is much more useful in case you want to script your analysis without intervention of a user when recoding your data set.
-
-
-3. Visualisation 
-
-3.1. PCoA
-
-Recall that the metadata file provided when the data are initially input contains information assigned to each individual including, often at a minimum, population assignment. There are various ways to reassign individuals to populations, rename populations or individuals, delete populations or individuals after the data have been read in to a genlight object. 
-
-
-The initial population assignments via the metafile can be viewed via:
-
-```{r}
-#population names (#30 populations)
-levels(pop(gl))
-#table on individuals per population
+```{r, echo=FALSE, eval=FALSE}
 table(pop(gl))
+#or
 
-```
-
-
-It is easy to create a barplot on the number of individuals per population:
-
-
-```{r, fig.height=3.5}
-barplot(table(pop(gl)), las=2)
-```
-
-If you have only a few reassignments, the simplest way is to use one or more of the scripts
-
-gl <- gl.keep.pop(gl, c(pop1, pop5, pop7))               # Retains only populations 1, 5 and 7
-gl <- gl.drop.pop(gl, c(pop2, pop3, pop4, pop6))         # Deletes populations 2, 3, 4, 6
-gl <- gl.merge.pop(gl, old=c("pop1","pop2"), new="pop1") # Merges populations 1 and 2 as pop1
-gl <- gl.merge.pop(gl, old=c("pop1"), new="outgroup")    # Renames population 1 to a population labelled outgroup
-
-Try these out for yourself.
-
-If only a few populations are involved, then the best option is to use the gl.drop.pop or gl.keep.pop functions.
-
-```{r, eval=FALSE}
-glnew3 <- gl.keep.pop(gl, pop.list=c("EmsubRopeMata","EmvicVictJasp"))
-```
-will delete all individuals in all populations except those listed.
-
-```{r, eval=FALSE}
-glnew3 <- gl.drop.pop(gl, pop.list=c("EmsubRopeMata","EmvicVictJasp"))
-```
-will delete all individuals in the listed populations.
-
-```{r, eval=FALSE}
-glnew3 <- gl.merge.pop(gl, old=c("EmsubRopeMata","EmvicVictJasp"), new="outgroup")
-```
-will reassign individuals in populations EmsubRopeMata and EmvicVictJasp to a new population called outgroup.
-
-```{r, eval=FALSE}
-glnew3 <- gl.merge.pop(gl, old="EmsubRopeMata", new="Emydura_victoriae")
-```
-will rename population EmvicVictJasp to Emydura_victoriae.
-
-Note that there is an option for recalculating the relevant individual
-metadata, and for removing resultant monomorphic loci.
-
-## Individual reassignment
-
-You can reassign individuals to new populations in a number of ways.A similar set of scripts apply to individuals.
-
-The initial individual labels entered at the time of reading the data into the genlight object can be viewed via^[Please note only first 10 entries are shown here]:
-
-```{r, eval=FALSE}
-#individual names
-indNames(gl)
-
-```
-
-```{r, echo=FALSE}
-#individual names
-indNames(gl)[1:10]
-```
-
-The individuals can be manipulated using
-
-gl <- gl.keep.ind(gl, c(ind1, ind5, ind7))               # Retains only individuals labelled ind1, 5 and 7
-gl <- gl.drop.pop(gl, c(ind2, ind3, ind4, ind6))         # Deletes populations 2, 3, 4, 6
-
-Try these out for yourself, by listing the individuals using indNames() and then deleting a selected few.
-
-```{r, eval=FALSE}
-glnew3 <- gl.keep.ind(gl, ind.list=c("AA019073","AA004859"))
-```
-will delete all individuals except those listed.
-
-```{r, eval=FALSE}
-glnew3 <- gl.drop.pop(gl, ind.list=c("AA019073","AA004859"))
-```
-will delete all individuals listed.
-
-## Recode tables
-
-Alternatively, reassignment and deletion of populations can be effected using a recode table, that is, a table stored as a csv file containing the old population assignments and the new population assignments as two columns. The quickest way to construct a recode table for an active genlight object is using
-
-```{r, eval=FALSE}
-gl.make.recode.pop(gl, outfile = "new_pop_assignments.csv")
-
-```
-
-```{block, type="hint"}
-Please note we are using the ```tempdir()``` to read/write files to a location in all examples. Feel free to change that to your needs by just providing a path to the folder of your liking. Normally, this would be your working directory specified with setwd().
-```
-
-
-This will generate a csv file with two columns, the first containing the existing population assignments, and the second also containing those assignments ready for editing to achieve the reassignments. This editing is best done in Excel.
-
-
-The population reassignments are then applied using:
-
-```{r, eval=FALSE}
-
-glnew <- gl.recode.pop(gl, pop.recode="new_pop_assignments.csv")
-
-```
-
-You can check that the new assignments have been applied with:
-
-```{r}
 levels(pop(gl))
 ```
 
 ```{block, type="task"}
-Try this using commands in the R editor to create the comma-delimited recode file, edit in in Excel to remove the Emmac prefix from populations, then apply it using the above command from the R editor. Check your results.
+
+Try using those commands in the R editor to create the comma-delimited recode file, edit in in Excel to remove the Emmac prefix from populations, then apply it using the above command from the R editor. Check your results.
 ```
 
 Another way of population reassignment is to use:
@@ -972,9 +638,9 @@ This command will bring up a window with a table showing the existing population
 
 Again, you can check that the new assignments have been applied with ```levels(pop(gl))```.
 
-##Deleting populations with a recode table
+**Deleting populations with a recode table**
 
-You can delete selected populations from a genlight object using the "Delete" keyword in the population recode file. By reassigning populations to Delete, you are flagging them for deletion, and when the recode table is applied, individuals belonging to those populations will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
+You can delete selected populations from a genlight object using the "Delete" keyword in the population recode file. By reassigning populations to "Delete"", you are flagging them for deletion, and when the recode table is applied, individuals belonging to those populations will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
 
 Again, you can check that the new assignments have been applied and requested populations deleted with ```levels(pop(gl))```.
 
@@ -982,9 +648,10 @@ Again, you can check that the new assignments have been applied and requested po
 Try deleting some populations, say the outgroup populations (EmsubRopeMata and EmvicVictJasp) using ```gl.edit.recode.pop()```from the R editor. Check your results for example using:
 
 ```table(pop(gl))```
+
 ```
 
-## Relabeling and deleting individuals with a recode table
+**Relabeling and deleting individuals with a recode table**
 
 Recall that the genlight object contains labels for each individual. It obtains these names from the csv datafile provided by DArT at the time of reading these data in. There may be reasons for changing these individual labels - there may have been a mistake, or new names need to be provided in preparation for analyses to be included in publications. 
 
@@ -1022,7 +689,7 @@ gl <- gl.edit.recode.ind(gl, ind.recode="new_ind_assignments.csv")
 This command will bring up a window with a table showing the existing individual labels, with a second column available for editing. When the window is closed, the renaming will be applied. If you have optionally nominated a ind.recode file, a recode table will be written to file for future use.
 Again, you can check that the new assignments have been applied with ```indNames(gl)```.
 
-## Deleting individuals
+**Deleting individuals**
 
 You can delete selected individuals from a genlight object using the "Delete" keyword in the individual recode file. By renaming individuals to Delete, you are flagging them for deletion, and when the recode table is applied, those individuals will be deleted from the genlight object, and any resultant monomorphic loci will be removed.
 
@@ -1031,22 +698,18 @@ Again, you can check that the new assignments have been applied and requested po
 Note that there are options for recalculating the relevant individual
 metadata, and for removing resultant monomorphic loci.
 
-## Recalculating locus metadata
+**Recalculating locus metadata**
 
-When you delete individuals or populations, many of the locus metadata (such as Call Rate) are no longer correct. You can recalculate the locus metadata using the script
+When you delete individuals or populations, many of the locus metadata (such as Call Rate) are no longer correct. You can recalculate the locus metadata using the code:
 
-gl <- gl.recalc.metrics(gl)
+```gl <- gl.recalc.metrics(gl)```
 
 This is obviously important if you are drawing upon locus metadata in your calculations or filtering. The script will also optionally remove monomorphic loci.
 
-## Using R commands to manipulate the genlight object
+**Using R commands to manipulate the genlight object**
 
-With your data in a genlight object, you have the full capabilities of
-the adegenet package at your fingertips for subsetting your data,
-deleting SNP loci and individuals, selecting and deleting populations,
-and for recoding to amalgamate or split populations.  Refer to the
-manual [Analysing genome-wide SNP data using adegenet] (http:
-//adegenet.r-forge.r-project.org/files/tutorial-genomics.pdf).  For example:
+With your data in a genlight object, you have the full capabilities of the adegenet package at your fingertips for subsetting your data, deleting SNP loci and individuals, selecting and deleting populations,
+and for recoding to amalgamate or split populations.  Refer to the vignette: [Analysing genome-wide SNP data using adegenet] (http://adegenet.r-forge.r-project.org/ files/tutorial-genomics.pdf).  For example:
 
 ```{r}
 gl_new <- gl[gl$pop!="EmmacBrisWive", ]
@@ -1055,10 +718,12 @@ gl_new <- gl[gl$pop!="EmmacBrisWive", ]
 removes all individuals of the population EmmacBrisWive from the data
 set.
 
-Note that this manual approach will not recalculate the individual
-metadata nor will it remove resultant monomorphic loci. There are also
-some challenges with keeping the individual metadata matching the
+```{block, type="hint"}
+
+Note that this manual approach will not recalculate the individual metadata nor will it remove resultant monomorphic loci. There are also some challenges with keeping the individual metadata matching the
 individual records (see below).
+
+```
 
 The basic idea is here that we can use the indexing function ```[ ]``` on the genlight object ```gl``` to subset our data set by individuals(=rows) and loci(=columns) in the same manner as we can subset a matrix in R.
 
@@ -1075,7 +740,6 @@ Subsets the data to the first seven individuals and the first three loci.
 
 ```{r}
 dim(glsub@other$ind.metrics)
-
 dim(glsub@other$loc.metrics)
 ```
 
@@ -1083,43 +747,10 @@ you see that the subsetting of the meta data for individuals worked fine (we hav
 But we have still all the metadata for all loci (in the rows for the (=107 instead of 3).
 This "bug/feature" is how the adegenet package implemented the genlight object.
 
-To take care for the correct filtering for loci and individuals we suggest therefore to use the following approach:
-
-1. create an index for individuals (if you want to subset by individuals)
-2. create an index for loci (if you want to subset by loci))
-
-For example you want to have only individuals of two populations ("EmmacRussEube" or "EmvicVictJasp") and 30 randomly selected loci you could type:
-```{r}
-
-index.ind <- pop(gl)=="EmmacRussEube" | pop(gl)=="EmvicVictJasp"
-#check if the index worked
-table( pop(gl), index.ind)
-
-
-index.loc <- sample(nLoc(gl), 30, replace = F)
-index.loc
-
-```
-
-and then
-
-3. apply the indices to the genlight object and the meta data at the same time:
-
-```{r}
-glsub2 <- gl[index.ind, index.loc]
-glsub2@other$ind.metrics <- gl@other$ind.metrics[index.ind,] #not necessary
-glsub2@other$loc.metrics <- gl@other$loc.metrics[index.loc,] #necessary
-```
-
-We can check the result via:
-
-```{r}
-glsub2
-dim(glsub2@other$ind.metrics)
-dim(glsub2@other$loc.metrics)
-```
 
 For those not fully versed in R, there are the above {dartR} filters to achieve the same end and the advantage is that the filters do handle subsets of data correctly without any additional need to subset the meta data. The advantage of the R approach is that it is much more useful in case you want to script your analysis without intervention of a user when recoding your data set.
+
+
 
 ```{block, type="task"}
 
@@ -1135,13 +766,13 @@ alleles.
 7. Filter out monomorphic loci.
 
 ```
+ \newpage
 
-#3. visualisation
+#3. Visualisation
 
+##3.1. PCoA
 
-
-
-Please refer to the workbook for details on the commands to be used.
+Please refer to the dartbook for details on the commands to be used and check the help pages.
 
 ```gl.pcoa, gl.pcoa.plot, gl.pcoa.plot.3d, gl.pcoa.scree```
 
@@ -1149,7 +780,7 @@ Please refer to the workbook for details on the commands to be used.
 
 ```{block, type="task"}
 
-1. Run a PCoA on you data set.
+1. Run a PCoA on your data set.
 2. Create a scree plot.
 3. Change the labels from populations to individuals
 4. Use the interactive version that allows you to zoom and interrogate the labels.
@@ -1166,7 +797,7 @@ undertake a rotation of the 3D solution to display any groupings most clearly.
 
 
 
-3.2. Genomic relatedness matrix
+##3.2. Genomic relatedness matrix
 
 We can calculate genomic relatedness via:
 
@@ -1179,7 +810,7 @@ grmatrix <- gl.grm(foxes.gl)
 ```
 
 
-3.3. Mapping your data 
+##3.3. Mapping your data 
 
 Check details via ?gl.map.interactive 
 ```{r, fig.height=3.5}
@@ -1193,24 +824,25 @@ gl.map.interactive(foxes.gl, provider = "Esri.WorldImagery")
 ```
 
 
+\newpage
 
 
+#4. Export your data 
 
-#5. Export data set to other formats (13:15-13:45)
-
-
+##4.1. Save a genlight object
 ```{r, eval=FALSE}
+#save
 saveRDS(gl, file="gl.rds")
 
+#read (load)
 mygl <- readRDS("gl.rds")
 
 ```
 
 
+##4.2 Export/convert your data set to other formats 
+
 All export functions start with gl2....
-
-
-
 
 function  |   explanation
 ----------------- | -----------------------------------------------------
@@ -1230,7 +862,6 @@ function  |   explanation
 
 ```{block, type="task"}
 
-1. Export your data set in any of the formats above and check if you can import it.
-
+1. Export your data set in any of the formats above and check if you can use it in other packages/softwares.
 
 ```
