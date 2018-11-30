@@ -62,6 +62,14 @@ Below here you will find exercises that should get you familiar with the package
 
 Feel free to use the provided sample data or use you own data.
 
+```{block, type="hint"}
+You can find an eletronic pdf version of this script at the following github page:
+
+[https://github.com/green-striped-gecko/dartRworkshop](https://github.com/green-striped-gecko/dartRworkshop)
+
+
+```
+
 
 \newpage
 
