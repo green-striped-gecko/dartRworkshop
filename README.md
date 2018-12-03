@@ -6,6 +6,8 @@ Where: University of Canberra, 6B3 [Building 6, Level B, Room 3]
 
 
 
-For the most recent programme, information on the venue, parking etc., plaese see 
+For the most recent programme, information on the venue, parking etc., please see 
+
+
 [http://cba.anu.edu.au/news-events/snps-population-and-phylo-genomics](http://cba.anu.edu.au/news-events/snps-population-and-phylo-genomics)
 
