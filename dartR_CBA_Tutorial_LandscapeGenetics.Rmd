@@ -1,6 +1,6 @@
 ---
 title: "Landscape geneticis - dartR Workshop - CBA"
-author: "Bernd Gruber & Arthur Georges"
+author: "Bernd Gruber"
 date: '`r Sys.Date()`'
 output: 
 
@@ -586,6 +586,7 @@ Or you simply draw it in your favourite image editor and load it into R with the
 ```
 
 
+
 ```{r, fig.height=4}
 r <- raster(xmn=142, xmx=153, ymn=-37, ymx=-29)
 r[] <- 1
@@ -594,7 +595,22 @@ rbarrier <- r
 rbarrier[,180:190]<- 10
 plot(rbarrier, axes=FALSE)
 points(glNSW@other$latlong, pch=16)
+
 ```
 
+\newpage
+
+# V. Calculating diversity measures (q-profile)
+
+Check ```?gl.diversity``` and reference therein for details.
+
+```{r, fig.height=4}
+gd <- gl.diversity(foxes.gl, probar = F, table = "N")
+#check the gd object for its content e.g.
+
+gd$zero_H_alpha
+round(gd$two_D_beta,3)
+
+```
 
 
