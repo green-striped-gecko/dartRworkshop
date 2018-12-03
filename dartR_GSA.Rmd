@@ -2,15 +2,20 @@
 title: "dartR Workshop - GSA"
 author: "Bernd Gruber & Arthur Georges"
 date: '`r Sys.Date()`'
-output:
+output: 
+#  pdf_document:
+#    includes: 
+#      in_header: box2.tex
 #  tufte::tufte_html:
   tufte::tufte_handout:
 #citation_package: natbib
    latex_engine: xelatex
    highlight: tango
    includes:
-      in_header: box2.tex
-# tufte::tufte_book:
+     in_header: box2.tex
+
+
+        # tufte::tufte_book:
 #   citation_package: natbib
 #   latex_engine: xelatex
 #   highlight: tango

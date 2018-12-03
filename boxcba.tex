@@ -1,0 +1,59 @@
+﻿
+\usepackage{tcolorbox}
+\usepackage{graphicx}
+\definecolor{light-gray}{gray}{0.95}
+\newenvironment{question}
+  {\begin{tcolorbox}[width=\textwidth,colback={light-gray},title={\includegraphics[height=1.5cm]{images/dialog_question.png} Question},colbacktitle=light-gray, coltitle=black]    
+  }
+  {
+  \end{tcolorbox}    
+  }
+\newenvironment{trhu}
+  {\begin{tcolorbox}[width=\textwidth,colback={light-gray},title={\includegraphics[height=1.5cm]{images/tuxpirat.png} Treasure Hunt},colbacktitle=light-gray, coltitle=black, fonttitle=\large\bfseries]    
+  }
+  {
+  \end{tcolorbox}    
+  }
+
+\newenvironment{task}
+  {\begin{tcolorbox}[width=\textwidth,colback={light-gray},title={\includegraphics[height=1.5cm]{images/penguin_task.png} Task},colbacktitle=light-gray, coltitle=black]    
+  }
+  {
+  \end{tcolorbox}    
+  }
+
+\newenvironment{hint}
+  {\begin{tcolorbox}[width=\textwidth,colback={light-gray},title={\includegraphics[height=1.5cm]{images/tux_info.png} Hint},colbacktitle=light-gray, coltitle=black]    
+  }
+  {
+  \end{tcolorbox}    
+  }
+
+\newenvironment{finish}
+  {\begin{tcolorbox}[width=\textwidth,colback={light-gray},title={\includegraphics[height=1.5cm]{images/finish.png} Well done!!},colbacktitle=light-gray, coltitle=black]    
+  }
+  {
+  \end{tcolorbox}    
+  }
+
+
+
+\usepackage{float}
+%\renewcommand\plaintitle{}
+%\geometry{textwidth=.75\paperwidth}
+\geometry{
+  left=16mm, % left margin
+  textwidth=150mm, % main text block
+  marginparsep=5mm, % gutter between main text block and margin notes
+  marginparwidth=40mm % width of margin notes
+}
+
+
+%\title[\includegraphics{images/unicanberra.png}]{This is the title of the paper: An inquiry into something interesting to talk about in order to finish}
+\usepackage{fancyhdr}
+%\lhead{\includegraphics[height=1cm]{images/unicanberra.png}}
+\fancyfoot[R]{\includegraphics[height=1cm]{images/unicanberra2.png}}
+\fancyfoot[L]{dartR - CBA2018}
+\setlength{\footskip}{80pt}
+
+
