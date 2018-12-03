@@ -495,7 +495,7 @@ library(dartR)
 library(osmdata)
 #also load some helper functions
 
-source("https://raw.github.com/green-striped-gecko/lgfun/master/lgfuns.r")
+source("https://raw.github.com/green-striped-gecko/dartRworkshop/master/code/lgfuns.r")
 
 
 
