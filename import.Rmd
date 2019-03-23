@@ -1,0 +1,24 @@
+---
+output:
+  pdf_document: default
+  word_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Import path  | Package | Pathway* | Description 
+------------------|------------|--------|------------------------
+gl.read.dart | dartR |  --- |based on DaRT data [with optional meta data for individuals]
+read.loci    | pegas |  loci2genind, gi2gl | data set are provided as a csv text file (?read.loci)
+read.vcfR   | pegas |  vcfR2genlight   | vcf text file (vcfR package)
+read.fstat | adegenet | gi2gl | Fstat format (version 2.9.3) by Jerome Goudet
+read.genetix | adegenet | gi2gl | Format Belkhir K., Borsa P., Chikhi L., Raufaste N. & Bonhomme F. (1996-2004) GENETIX 
+read.structure | adegenet | gi2gl | Structure format of Pritchard, J.; Stephens, M. & Donnelly, P. (2000)
+read.PLINK  | adegenet | --- |  Data provided in PLINK format 
+fasta2genlight | adegenet | --- | Extracts SNPs data from fasta format (?adegenet)
+read.genetable | PopGenReport | gi2gl |csv text file based on df2genind Adamack & Gruber (2014) (?read.genetable)
+*Pathway provides the order of functions needed to convert data to genlight, --- indicates that the function direclty  converts to a ```genlight``` object
+
