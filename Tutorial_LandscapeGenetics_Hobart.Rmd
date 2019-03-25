@@ -50,7 +50,7 @@ This tutorial is slightly different from the previous ones as it will guide you 
 ```{block, type="hint"}
 You can find an eletronic pdf version of this script at the following github page:
 
-[https://github.com/green-striped-gecko/dartRworkshop](https://github.com/green-striped-gecko/dartRworkshop)
+[https://github.com/green-striped-gecko/dartRworkshop](https://github.com/green-striped-gecko/hobart2019)
 
 
 ```
