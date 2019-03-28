@@ -76,6 +76,8 @@ We need two main libraries
 ```{r}
 library(dartR)
 library(PopGenReport)
+library(raster)
+
 ```
 
 
@@ -221,7 +223,7 @@ We will use a "real" data set from Possums in NZ (and the Australian mainland). 
 
 
 
-poss <- gl.read.dart("./data/Possums_SNP.CSV", "./data/Possum_Covariate_DArT_180619.csv")
+poss <- gl.read.dart("./data/Possums_SNP.CSV", "./data/Possum_Covariate_DArT_180619.csv", probar = FALSE)
 
 gl.map.interactive(poss)
 
@@ -236,7 +238,7 @@ The resistance layers (ts and rb) code for the amount of trees and shrubs in a g
 Rivers are also coded between zero and one, meaning is a large river and towards zero a smaller tributary. Bridges are "coded" as gaps in rivers. Have a look at the resistance layers. 
  
 
-```{r, fig.height=4}
+```{r, fig.height=6}
 ts <- raster("./data/TreeScrub.tif")
 rb <- raster("./data/RiverBridges.tif")
 
@@ -817,9 +819,8 @@ coordinates(ll.sp)
 ```{block, type="finish"}
 
 That is the end. Well done you finished. 
-Feel free to have another go or have a well deserved rest.
+Feel free to have another go or have a well deserved beverage!!!
 
-Cheers, Bernd
 ```
 
 
