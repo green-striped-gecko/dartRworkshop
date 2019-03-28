@@ -76,6 +76,8 @@ We need two main libraries
 ```{r}
 library(dartR)
 library(PopGenReport)
+library(raster)
+
 ```
 
 
