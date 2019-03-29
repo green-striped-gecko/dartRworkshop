@@ -346,9 +346,7 @@ names(mats)<- c("ts40", "rb50", "tsrb")
 system.time(glc <- gl.genleastcost(possub.nz, fric.raster =mats, gen.distance = "Kosman", NN = 8, pathtype = "leastcost"))
 
 
-lgrMMRR(gen.mat = glc$gen.mat, cost.mats = glc$cost.mats, eucl.mat = glc$eucl.mat
-
-
+lgrMMRR(gen.mat = glc$gen.mat, cost.mats = glc$cost.mats, eucl.mat = glc$eucl.mat)
 
 
 ```
@@ -814,6 +812,27 @@ ll.sp2 <- spTransform(utms,CRS( "+proj=longlat +ellps=WGS84"))
 coordinates(ll.sp2)
 coordinates(ll.sp)
 ```
+
+## Download an elevation layer (worldwide)
+
+As an example for a resistance layer you can download an elevation layer for [http://srtm.csi.cgiar.org/srtmdata/](http://srtm.csi.cgiar.org/srtmdata/). Download as a simple GeoTiff.
+
+
+## Project a raster and clip it to a certain area.
+
+load the raster file [you need to know its current projection]
+
+```{r}
+
+
+
+
+```
+
+
+
+
+
 
 
 ```{block, type="finish"}
