@@ -219,11 +219,10 @@ We will do this together to demonstrate the "problems" you can run into, when ru
 We will use a "real" data set from Possums in NZ (and the Australian mainland). Because of time limitation we will only run a subset of the data. 
 
 ```{r, fig.height=4}
-#source("https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/code/lgfuns.r")
 
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
 
-
-poss <- gl.read.dart("./data/Possums_SNP.CSV", "./data/Possum_Covariate_DArT_180619.csv", probar = FALSE)
+poss <- gl.read.dart(file.path(fp,"Possums_SNP.CSV"), file.path(fp, "Possum_Covariate_DArT_180619.csv"), probar = FALSE)
 
 gl.map.interactive(poss)
 
@@ -239,8 +238,8 @@ Rivers are also coded between zero and one, meaning is a large river and towards
  
 
 ```{r, fig.height=6}
-ts <- raster("./data/TreeScrub.tif")
-rb <- raster("./data/RiverBridges.tif")
+ts <- raster(file.path(fp, "TreeScrub.tif"))
+rb <- raster(file.path(fp, "RiverBridges.tif"))
 
 par(mfrow=c(2,1))
 plot(ts)
@@ -818,22 +817,50 @@ coordinates(ll.sp)
 As an example for a resistance layer you can download an elevation layer for [http://srtm.csi.cgiar.org/srtmdata/](http://srtm.csi.cgiar.org/srtmdata/). Download as a simple GeoTiff.
 
 
-## Project a raster and clip it to a certain area.
+## Project and crop the raster layer to a certain area.
 
-load the raster file [you need to know its current projection]
+It is necessary that all resistance layers have the same grain, extend and coordinate system, to be able to run a landscape genetic analysis. Below is an example of how a resistance layer (derived from an elevation layer), has to be prepared to be used with the analysis of possums in NZ described above.
 
-```{r}
+The necessary steps are:
+
+1. reproject the downloaded new resistanc layer to the same coordinate system as the genetic samples.
+
+2. Define the extent of the new layer (based on the range of the coordinates of the genetic samples)
+
+3. Crop the projeced raster layer to the new extent
+
+```{r, fig.height=4}
+#reload the raster layer (to be used as the template)
+ts <- raster("./data/TreeScrub.tif")
+
+#elevation layer from the source mentioned above
+res <- raster("./data/srtm_72_20.tif")
+
+#use poss.nz and its projection NZGD2000 to reproject the layer
+#resolution should be as ts, but too big here (takes to long)
+res.proj <- projectRaster(res, crs = proj4string(ts), res=500)
+
+# define the extent of the new resistance layer by samples
+xmin <- min(poss.nz@other$xy$x-1000)
+xmax <- max(poss.nz@other$xy$x+1000)
+ymin <- min(poss.nz@other$xy$y-1000)
+ymax <- max(poss.nz@other$xy$y+1000)
+
+#define extent by other resistance layers
+#xmin <- extent(ts)@xmin
+#xmax <- extent(ts)@xmax
+#ymin <- extent(ts)@ymin
+#ymax <- extent(ts)@ymax
+
+res.temp <- raster( xmn=xmin, xmx=xmax, ymn=ymin, ymx=ymax, crs=proj4string(ts))
 
 
+res.proj.crop <- crop(res.proj, res.temp)
+plot(res.proj.crop)
+points(poss.nz@other$xy, pch=16)
 
-
+res.proj.crop
 ```
-
-
-
-
-
-
 
 ```{block, type="finish"}
 
