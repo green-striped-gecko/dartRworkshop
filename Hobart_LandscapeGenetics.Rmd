@@ -76,6 +76,8 @@ We need two main libraries
 ```{r}
 library(dartR)
 library(PopGenReport)
+library(raster)
+
 ```
 
 
@@ -206,7 +208,163 @@ Load the provided data set and the provided raster data set.
 
 Run a resistance layer analysis to check if the proportion of forest in the area do have an effect on the population structure of possums.
 
+We will do this together to demonstrate the "problems" you can run into, when running an analysis.
 
+
+```
+
+
+## Load the data
+
+We will use a "real" data set from Possums in NZ (and the Australian mainland). Because of time limitation we will only run a subset of the data. 
+
+```{r, fig.height=4}
+#source("https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/code/lgfuns.r")
+
+
+
+poss <- gl.read.dart("./data/Possums_SNP.CSV", "./data/Possum_Covariate_DArT_180619.csv", probar = FALSE)
+
+gl.map.interactive(poss)
+
+#subset to only NZ data using longitude
+poss.nz <- poss[poss@other$latlong$lon>160,]
+
+```
+
+If you inspect the genlight object, you notice coordinates are not projected (only lat-lons are given). We need to project the data set into the same format as the resistance layers. So we first load the resistance layers and check their coordinate system.
+
+The resistance layers (ts and rb) code for the amount of trees and shrubs in a grid cell and for rivers and bridges in the landscape. We want to test if the amount of forest/trees or rivers/bridges affect the population structure of possums in our study area. From other studies it is known that possums prefer to disperse within forest, so we expect a positive relationship between amount of forest in a grid cell and the ability of possums to traverse such a habitat. Be aware we want to model resistance, hence the values in ts are code between zero and one and zero means (100% forest), whereas one (no trees) in a grid cells.
+Rivers are also coded between zero and one, meaning is a large river and towards zero a smaller tributary. Bridges are "coded" as gaps in rivers. Have a look at the resistance layers. 
+ 
+
+```{r, fig.height=6}
+ts <- raster("./data/TreeScrub.tif")
+rb <- raster("./data/RiverBridges.tif")
+
+par(mfrow=c(2,1))
+plot(ts)
+plot(rb)
+```
+
+
+Actually we wanted to reproject lat-lons to the coordinate of the resistance layers. 
+
+```{r, fig.height=4}
+
+proj4string(rb)
+proj4string(ts)
+
+
+```
+
+Both are in a coordinate system commonly used in NZ: NZGD2000 (EPSG: 2193). We therefore need to project our NZ possum data into this system and put that information in the \@other$xy slot, where it can be processed by out functions.
+
+
+```{r}
+
+library(rgdal)
+
+nz.pr4 <- proj4string(rb)
+
+
+xy <- project(as.matrix(poss.nz@other$latlong[,2:1]), proj = nz.pr4)
+
+poss.nz@other$xy <- data.frame(x=xy[,1], y=xy[,2])
+
+
+
+```
+
+As mentioned above we will further reduce our data set to a smaller subsample because of run-time reasons:
+
+```{r, fig.height=4}
+
+#only pupulation 3
+possub.nz <- poss.nz[pop(poss.nz)==3,]
+
+set.seed(5) #leave it during the first run
+#only 11 individuals from that population
+possub.nz <- possub.nz[sample(1:nInd(possub.nz),11, replace = F),1:1000]
+
+gl.map.interactive(possub.nz)
+```
+
+The next step is to prepare our resistance layers.
+We first will test only one resistance layer (ts) and its effect on the genetic distance of our 11 individuals. Currently the resistance values of ts are coded to be between zero and one (zero=100% forest one=0%forest). We assume a fairly strong linear effect of the %of non-forest and rescale the effect to be between 1 (no detour caused) for 100% forest and 40 units caused by 0% forest.
+
+```{r}
+ts40 <- ts
+values(ts40) <- (values(ts40))*39+1
+```
+
+
+To run a resistance analysis using an individual based distance (kosman) and least-cost paths, we type:
+
+```{r, fig.height=4}
+
+system.time(glc <- gl.genleastcost(possub.nz, fric.raster =ts40, gen.distance = "Kosman", NN = 8, pathtype = "leastcost"))
+
+wassermann(eucl.mat = glc$eucl.mat, cost.mat = glc$cost.mats,  gen.mat = glc$gen.mat)
+
+```
+
+
+```{block, type="question"}
+
+Do you find a "significant" effect of the amount of forest on the population structure of possums in NZ?
+
+```
+
+```{block, type="task"}
+
+The next part is a practive run for you. You will rerun the analysis and interpret its result using a raster stack (several resitance layers in one go).
+
+We create 3 layers, the one we just used (ts40) another one that checks for an effect of rivers (rb50) and then one layer that combines both effects.
+
+1. What is your finding?
+2. Actually it is not a very good idea to use these three layers. Why? 
+
+```
+
+
+The code below shows you how to combine layers in a raster stack and how to run 
+```{r, eval=FALSE}
+
+#river/bridge resistance
+rb50 <- rb
+values(rb50) <- values(rb50)*200+1
+
+#combine rivers and forest
+tcrb <- ts
+values(tcrb) <- (values(ts))*39 + values(rb)*99 + 1
+mats <- stack(ts40, rb50, tcrb)
+
+names(mats)<- c("ts40", "rb50", "tsrb")
+
+
+system.time(glc <- gl.genleastcost(possub.nz, fric.raster =mats, gen.distance = "Kosman", NN = 8, pathtype = "leastcost"))
+
+
+lgrMMRR(gen.mat = glc$gen.mat, cost.mats = glc$cost.mats, eucl.mat = glc$eucl.mat
+
+
+
+
+```
+
+```{block, type="hint"}
+
+If you could not answer question 2 above, check the "correlation" between the resitance layers.
+
+```
+
+
+```{r, eval=FALSE}
+
+library(GGally)
+ss <- sapply(glc$cost.mats, function(x) as.dist(x))
+ggpairs(data.frame(ss))
 
 ```
 
@@ -661,9 +819,8 @@ coordinates(ll.sp)
 ```{block, type="finish"}
 
 That is the end. Well done you finished. 
-Feel free to have another go or have a well deserved rest.
+Feel free to have another go or have a well deserved beverage!!!
 
-Cheers, Bernd
 ```
 
 
