@@ -862,6 +862,56 @@ points(poss.nz@other$xy, pch=16)
 res.proj.crop
 ```
 
+
+# Addition: Generalised dissimilarity modelling (gdm)
+
+For a general introduction see [Fitzpatrick and Keller (2015). Ecology Letters, 18: 1–16. doi: 10.1111/ele.12376](https://scholar.google.com.au/scholar?q=Ecological+genomics+meets+community-level+modelling+ofbiodiversity:+mapping+the+genomic+landscape+of+current+andfuture+environmental+adaptation&hl=en&as_sdt=0&as_vis=1&oi=scholart)
+
+The basic idea is that instead of fitting linear models (regressions),gms file splines, hence allows for more flexibility. This approach is fairly new, but quite promising. Below is an implementation that uses a new gl. function (not yet implmented in dartR).
+
+We use the same simple example as above.
+
+
+```{r, fig.height=4}
+
+
+data(possums.gl)
+library(raster)  #needed for that example
+landscape.sim <- readRDS(system.file("extdata","landscape.sim.rdata", package="dartR"))
+
+plot(landscape.sim)
+points(possums.gl@other$xy, pch=16)
+
+
+### new gl.gdm function (not tested yet)
+#install.packages("gdm")
+library(gdm)
+
+gl.gdm <- function(x, glc, geo=TRUE, splines=NULL, knots=NULL)
+{
+  gdis <- data.frame(site=colnames(glc$gen.mat), glc$gen.mat)
+  
+  #recover coordinates
+  fac <- pop(x)
+  xys <- apply(x@other$xy, 2, function(q) tapply(q, fac, mean))
+  predtab <- data.frame(site=rownames(xys), x=xys[,1], y=xys[,2] )
+  costmats <- lapply(glc$cost.mats, function (x) data.frame(site=colnames(xys), x )
+  )
+  gtab <- formatsitepair(bioData = gdis, bioFormat = 3,XColumn = "x", YColumn = "y", pred=predtab, siteColumn = "site", distPreds = costmats)
+  gdmmodell <-gdm(gtab, geo=geo, splines=splines, knots=knots) 
+  return(gdmmodell)
+}
+  
+glc <- gl.genleastcost(x=possums.gl,fric.raster=landscape.sim , gen.distance = "D", NN=8, pathtype = "leastcost",plotpath = TRUE)
+
+gdm1 <- gl.gdm(possums.gl, glc)
+summary(gdm1)
+plot(gdm1)
+
+
+```
+
+
 ```{block, type="finish"}
 
 That is the end. Well done you finished. 
