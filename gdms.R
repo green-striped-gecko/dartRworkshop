@@ -52,7 +52,7 @@ frs <- stack(landscape.sim, ff, ff2)
 
 
 
-glc <- gl.genleastcost(x=possums.gl,fric.raster=fric.raster , gen.distance = "D", NN=8, pathtype = "leastcost",plotpath = TRUE)
+glc <- gl.genleastcost(x=possums.gl,fric.raster=frs , gen.distance = "D", NN=8, pathtype = "leastcost",plotpath = TRUE)
 
 gl.gdm <- function(x, glc, geo=TRUE, splines=NULL, knots=NULL)
 {
@@ -95,4 +95,60 @@ plot(gdm.1)
 modTest <- gdm.varImp(gtab, geo=F, nPerm = 50, parallel = T, cores=5)
 
 barplot(sort(modTest[[2]][,1], decreasing=T))
+
+
+
+
+
+library(BEDASSLE)
+
+data(HGDP.bedassle.data)
+data(mcmc
+     
+     poss.counts <- apply(as.matrix(possums.gl), 2, function(x) tapply(x, pop(possums.gl), mean, na.rm=T))
+     
+     poss.sample_sizes <- apply(as.matrix(possums.gl), 2, function(x) tapply(!is.na(x), pop(possums.gl), sum, na.rm=T))
+     
+     poss.D <- glc$eucl.mat
+     poss.E = glc$cost.mats
+     poss.k = nPop(possums.gl)
+     poss.loci = nLoc(possums.gl)
+     
+     
+     mcmc.operators$delta  <- 3
+     
+mm <- MCMC(
+  counts = poss.counts,
+  sample_sizes = poss.sample_sizes,
+  D = poss.D,
+  E = poss.E,
+  k = poss.k,
+  loci = poss.loci,
+  delta = mcmc.operators$delta,
+  aD_stp = mcmc.operators$aD_stp,
+  aE_stp = mcmc.operators$aE_stp,
+  a2_stp = mcmc.operators$a2_stp,
+  thetas_stp = mcmc.operators$thetas_stp,
+  mu_stp = mcmc.operators$mu_stp,
+  ngen = 1000,
+  printfreq = mcmc.operators$printfreq,
+  savefreq = mcmc.operators$savefreq,
+  samplefreq = mcmc.operators$samplefreq,
+  directory = NULL,
+  prefix = "poss_",
+  continue = FALSE,
+  continuing.params = NULL)     
+ ho
+
+
+  
+MCMC.outpout <- "poss_MCMC_output1.Robj"
+
+plot_all_acceptance_rates(MCMC.outpout)
+
+plot_all_trace("example_MCMC_output1.Robj", percent.burnin = 0, thinning = 1, population.names = NULL)
+
+plot_all_marginals("example_MCMC_output1.Robj", percent.burnin = 0, thinning = 1,population.names = NULL)
+
+
 

@@ -131,8 +131,8 @@ xs <- tapply(possums.gl@other$latlong[,"lon"], pop(possums.gl), mean)
 ys <- tapply(possums.gl@other$latlong[,"lat"], pop(possums.gl), mean)
 
 plot(landscape.sim)
-points(xs, ys, pch=16, col="orange")
-text(xs, ys, popNames(possums.gl), col="black", cex=1.5)
+points(xs, ys, pch=16, col="black", cex=2)
+text(xs+10, ys, popNames(possums.gl), col="black", cex=1.5)
 
 coords <- cbind(xs, ys)
 
@@ -567,7 +567,7 @@ simpops <- run.popgensim(simpops, steps=3, cost.mat,
                          n.cov=para$n.cov, rec="none")
 ```
 
-In essence we were running a metapopulation with 100 individuals per subpopulation on our resistance landscape for 3 generations. The question is now, was that enough time to create an effect on the population structure?
+In essence we were running a metapopulation with 50 individuals per subpopulation on our resistance landscape for 3 generations. The question is now, was that enough time to create an effect on the population structure?
 
 We can check now the pairwise Fst values and then do a landscape genetic analysis using partial mantel tests.
 
@@ -895,7 +895,7 @@ gl.gdm <- function(x, glc, geo=TRUE, splines=NULL, knots=NULL)
   fac <- pop(x)
   xys <- apply(x@other$xy, 2, function(q) tapply(q, fac, mean))
   predtab <- data.frame(site=rownames(xys), x=xys[,1], y=xys[,2] )
-  costmats <- lapply(glc$cost.mats, function (x) data.frame(site=colnames(xys), x )
+  costmats <- lapply(glc$cost.mats, function (x) data.frame(site=rownames(xys), x )
   )
   gtab <- formatsitepair(bioData = gdis, bioFormat = 3,XColumn = "x", YColumn = "y", pred=predtab, siteColumn = "site", distPreds = costmats)
   gdmmodell <-gdm(gtab, geo=geo, splines=splines, knots=knots) 
@@ -907,7 +907,6 @@ glc <- gl.genleastcost(x=possums.gl,fric.raster=landscape.sim , gen.distance = "
 gdm1 <- gl.gdm(possums.gl, glc)
 summary(gdm1)
 plot(gdm1)
-
 
 ```
 
