@@ -131,8 +131,8 @@ xs <- tapply(possums.gl@other$latlong[,"lon"], pop(possums.gl), mean)
 ys <- tapply(possums.gl@other$latlong[,"lat"], pop(possums.gl), mean)
 
 plot(landscape.sim)
-points(xs, ys, pch=16, col="orange")
-text(xs, ys, popNames(possums.gl), col="black", cex=1.5)
+points(xs, ys, pch=16, col="black", cex=2)
+text(xs+10, ys, popNames(possums.gl), col="black", cex=1.5)
 
 coords <- cbind(xs, ys)
 
@@ -219,11 +219,10 @@ We will do this together to demonstrate the "problems" you can run into, when ru
 We will use a "real" data set from Possums in NZ (and the Australian mainland). Because of time limitation we will only run a subset of the data. 
 
 ```{r, fig.height=4}
-#source("https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/code/lgfuns.r")
 
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
 
-
-poss <- gl.read.dart("./data/Possums_SNP.CSV", "./data/Possum_Covariate_DArT_180619.csv", probar = FALSE)
+poss <- gl.read.dart(file.path(fp,"Possums_SNP.CSV"), file.path(fp, "Possum_Covariate_DArT_180619.csv"), probar = FALSE)
 
 gl.map.interactive(poss)
 
@@ -239,8 +238,8 @@ Rivers are also coded between zero and one, meaning is a large river and towards
  
 
 ```{r, fig.height=6}
-ts <- raster("./data/TreeScrub.tif")
-rb <- raster("./data/RiverBridges.tif")
+ts <- raster(file.path(fp, "TreeScrub.tif"))
+rb <- raster(file.path(fp, "RiverBridges.tif"))
 
 par(mfrow=c(2,1))
 plot(ts)
@@ -568,7 +567,7 @@ simpops <- run.popgensim(simpops, steps=3, cost.mat,
                          n.cov=para$n.cov, rec="none")
 ```
 
-In essence we were running a metapopulation with 100 individuals per subpopulation on our resistance landscape for 3 generations. The question is now, was that enough time to create an effect on the population structure?
+In essence we were running a metapopulation with 50 individuals per subpopulation on our resistance landscape for 3 generations. The question is now, was that enough time to create an effect on the population structure?
 
 We can check now the pairwise Fst values and then do a landscape genetic analysis using partial mantel tests.
 
@@ -818,21 +817,98 @@ coordinates(ll.sp)
 As an example for a resistance layer you can download an elevation layer for [http://srtm.csi.cgiar.org/srtmdata/](http://srtm.csi.cgiar.org/srtmdata/). Download as a simple GeoTiff.
 
 
-## Project a raster and clip it to a certain area.
+## Project and crop the raster layer to a certain area.
 
-load the raster file [you need to know its current projection]
+It is necessary that all resistance layers have the same grain, extend and coordinate system, to be able to run a landscape genetic analysis. Below is an example of how a resistance layer (derived from an elevation layer), has to be prepared to be used with the analysis of possums in NZ described above.
 
-```{r}
+The necessary steps are:
+
+1. reproject the downloaded new resistanc layer to the same coordinate system as the genetic samples.
+
+2. Define the extent of the new layer (based on the range of the coordinates of the genetic samples)
+
+3. Crop the projeced raster layer to the new extent
+
+```{r, fig.height=4}
+#reload the raster layer (to be used as the template)
+ts <- raster("./data/TreeScrub.tif")
+
+#elevation layer from the source mentioned above
+res <- raster("./data/srtm_72_20.tif")
+
+#use poss.nz and its projection NZGD2000 to reproject the layer
+#resolution should be as ts, but too big here (takes to long)
+res.proj <- projectRaster(res, crs = proj4string(ts), res=500)
+
+# define the extent of the new resistance layer by samples
+xmin <- min(poss.nz@other$xy$x-1000)
+xmax <- max(poss.nz@other$xy$x+1000)
+ymin <- min(poss.nz@other$xy$y-1000)
+ymax <- max(poss.nz@other$xy$y+1000)
+
+#define extent by other resistance layers
+#xmin <- extent(ts)@xmin
+#xmax <- extent(ts)@xmax
+#ymin <- extent(ts)@ymin
+#ymax <- extent(ts)@ymax
+
+res.temp <- raster( xmn=xmin, xmx=xmax, ymn=ymin, ymx=ymax, crs=proj4string(ts))
 
 
+res.proj.crop <- crop(res.proj, res.temp)
+plot(res.proj.crop)
+points(poss.nz@other$xy, pch=16)
 
-
+res.proj.crop
 ```
 
 
+# Addition: Generalised dissimilarity modelling (gdm)
+
+For a general introduction see [Fitzpatrick and Keller (2015). Ecology Letters, 18: 1–16. doi: 10.1111/ele.12376](https://scholar.google.com.au/scholar?q=Ecological+genomics+meets+community-level+modelling+ofbiodiversity:+mapping+the+genomic+landscape+of+current+andfuture+environmental+adaptation&hl=en&as_sdt=0&as_vis=1&oi=scholart)
+
+The basic idea is that instead of fitting linear models (regressions),gms file splines, hence allows for more flexibility. This approach is fairly new, but quite promising. Below is an implementation that uses a new gl. function (not yet implmented in dartR).
+
+We use the same simple example as above.
 
 
+```{r, fig.height=4}
 
+
+data(possums.gl)
+library(raster)  #needed for that example
+landscape.sim <- readRDS(system.file("extdata","landscape.sim.rdata", package="dartR"))
+
+plot(landscape.sim)
+points(possums.gl@other$xy, pch=16)
+
+
+### new gl.gdm function (not tested yet)
+#install.packages("gdm")
+library(gdm)
+
+gl.gdm <- function(x, glc, geo=TRUE, splines=NULL, knots=NULL)
+{
+  gdis <- data.frame(site=colnames(glc$gen.mat), glc$gen.mat)
+  
+  #recover coordinates
+  fac <- pop(x)
+  xys <- apply(x@other$xy, 2, function(q) tapply(q, fac, mean))
+  predtab <- data.frame(site=rownames(xys), x=xys[,1], y=xys[,2] )
+  costmats <- lapply(glc$cost.mats, function (x) data.frame(site=rownames(xys), x )
+  )
+  gtab <- formatsitepair(bioData = gdis, bioFormat = 3,XColumn = "x", YColumn = "y", pred=predtab, siteColumn = "site", distPreds = costmats)
+  gdmmodell <-gdm(gtab, geo=geo, splines=splines, knots=knots) 
+  return(gdmmodell)
+}
+  
+glc <- gl.genleastcost(x=possums.gl,fric.raster=landscape.sim , gen.distance = "D", NN=8, pathtype = "leastcost",plotpath = TRUE)
+
+gdm1 <- gl.gdm(possums.gl, glc)
+summary(gdm1)
+plot(gdm1)
+
+```
 
 
 ```{block, type="finish"}
