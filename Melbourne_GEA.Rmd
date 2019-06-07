@@ -1,0 +1,154 @@
+---
+title: "GEA environment,selection and outliers - Melbourne"
+author: "Bernd Gruber (based on code from Brenna Forrester)"
+date: '`r Sys.Date()`'
+output: 
+
+#  pdf_document:
+#  toc: yes
+#    number_sections: true
+#    includes: 
+#      in_header: boxcba.tex
+#  tufte::tufte_html:
+  tufte::tufte_handout:
+    
+#citation_package: natbib
+   latex_engine: xelatex
+   toc: yes
+   
+
+   highlight: tango
+   includes:
+     in_header: boxcba.tex
+     
+always_allow_html: yes
+        # tufte::tufte_book:
+#   citation_package: natbib
+#   latex_engine: xelatex
+#   highlight: tango
+#   includes:
+#           in_header: box2.tex
+#bibliography: skeleton.bib
+#link-citations: yes
+---
+
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+library(tufte)
+library(knitr)
+#knitr::opts_chunk$set(prompt = TRUE)
+```
+
+\newpage
+
+# Foreword
+
+This tutorial is based on code and comments from Brenna Forrester, Colorado State University.
+
+
+The Wolf data set is from Schweizer et al. 2016. Genetic subdivision and candidate genes under selection in North American grey wolves [Molecular Ecology 25, 380-402. Dryad doi:10.5061/dryad.c9b25](Genetic subdivision and candidate genes under selection in North American grey wolves
+# Molecular Ecology 25, 380-402. Dryad doi:10.5061/dryad.c9b25).
+
+# Multivariate GEA: Redundancy Analysis
+
+ RDA is a multivariate ordination technique that analyzes matricies of loci
+and environmental predictors simultaneously. RDA determines how groups of loci covary in response to the multivariate environment.
+
+RDA is a two-step analysis in which genetic and environmental data are analyzed using multivariate linear regression, producing a matrix of fitted values. Then PCA of the fitted values is used to produce canonical axes, which are linear combinations of the predictors.
+
+
+More information on RDA & other multivariate GEAs (such as Random Forest) can be found in our paper: Forester BR, Lasky JR, Wagner HH, Urban DL (2018) Comparing methods for detecting multilocus adaptation with multivariate genotype-environment associations Molecular Ecology 27, 2215-2233.
+
+
+RDA can be used on both individual and population-based sampling designs. The distinction between the two may not be straightforward in all cases. A simple guideline would be to use an individual-based framework when you have individual coordinates for most of your samples, and the resolution of your environmental data would allow for a sampling of environmental conditions across the site/study area. More on RDA with population level data in the notes below.
+
+To run RDA on population level data, calculate allele frequencies (columns) for populations (rows). Applying a Hellinger transformation/standardization to the data will ensure it behaves well in the RDA, e.g. if our input of population allele frequencies was called "pop.data":
+
+```{r, eval=FALSE}
+pop.data.hellinger <- decostand(pop.data, method="hellinger") # square root of (allele frequency / population total allele frequency)
+
+```
+
+RDA does not require corrections for multiple tests because it analyzes the genomic and environmental data simultaneously!
+
+I highly recommend the following book for more information on interpreting RDA output from vegan: Borcard et al. (2011) Numerical Ecology with R.
+
+
+
+Before we can start with our redundancy analysis we need to make sure, we select "suitable" environmental predictors. Meaning the predictors should have a "good" chance to have an effect on our response (the genetic structure) and should not be correlated between each other. 
+
+Please see Dormann et al. (2013) Ecography for a discussion of these issues. Generally, the |r| > 0.7 "rule of thumb" is a good guideline for removing correlated predictors. We will also check for multicollinearity below using Variance Inflation Factors.
+
+We will use the Wolf data set mentioned above to run an examplary redundancy analysis. To convert a genlight object into the correct format simply use:
+
+```{r, eval=FALSE}
+
+gen <- as.matrix(gl)
+
+```
+
+
+
+##Load the genetic data set from a csv file:
+
+```{r}
+gen <- as.matrix(read.csv("./data/Wolf_Gen_sample_6pops_94indiv.csv"))
+dim(gen)      # 94 individuals in rows; 10,000 SNPs in columns
+gen[1:5,1:5]  # coded as 0/1/2
+
+```
+
+
+##Load the environmental data set
+
+```{r}
+# Read in the individual & environmental data:
+env <- read.csv("./data/Wolf_Env_6pops_94indiv.csv")
+names(env)
+```
+
+Or in case you are using a genlight object you should be able to use the @other$ind.metrics table from a genlight data set.
+
+```{r, eval=FALSE}
+env <- @other$ind.metrics
+
+```
+
+
+
+##Check for multicollinearity between predictors (|r|>0.7)
+
+```{r, fig.height=6}
+library(psych)
+pairs.panels(env[, 5:12]) #good for contineous predictors only
+
+library(GGally)
+ggpairs(env[,-1]) #allows also factors [except individual]
+
+```
+
+
+
+
+
+
+
+```{r}
+
+
+wolf.rda <- rda(gen ~ ., data=as.data.frame(pred), scale=T)  # vegan wants data frames, not matrices
+```
+
+
+
+
+```{block, type="finish"}
+
+That is the end. Well done you finished. 
+Feel free to have another go or have a well deserved beverage!!!
+
+```
+
+
+
