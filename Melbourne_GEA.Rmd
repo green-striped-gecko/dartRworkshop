@@ -135,7 +135,9 @@ ggpairs(env[,-1]) #allows also factors [except individual]
 
 
 ```{r}
-
+library(vegan)
+pred <- env[,5:10]
+#colnames(pred) <-c("AMT","MDR","sdT","AP","cvP","NDVI","Elev","Tree")
 
 wolf.rda <- rda(gen ~ ., data=as.data.frame(pred), scale=T)  # vegan wants data frames, not matrices
 ```
