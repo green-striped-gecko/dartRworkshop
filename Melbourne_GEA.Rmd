@@ -92,8 +92,20 @@ gen <- as.matrix(gl)
 
 ##Load the genetic data set from a csv file:
 
-```{r}
+```{r, echo=FALSE}
 gen <- as.matrix(read.csv("./data/Wolf_Gen_sample_6pops_94indiv.csv"))
+dim(gen)      # 94 individuals in rows; 10,000 SNPs in columns
+gen[1:5,1:5]  # coded as 0/1/2
+
+```
+
+
+```{r, eval=FALSE}
+#Read from github
+
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
+
+gen <- read.csv(file.path(fp,"Wolf_Gen_sample_6pops_94indiv.csv"))
 dim(gen)      # 94 individuals in rows; 10,000 SNPs in columns
 gen[1:5,1:5]  # coded as 0/1/2
 
@@ -102,10 +114,24 @@ gen[1:5,1:5]  # coded as 0/1/2
 
 ##Load the environmental data set
 
-```{r}
+
+
+
+```{r, echo=FALSE}
 # Read in the individual & environmental data:
 env <- read.csv("./data/Wolf_Env_6pops_94indiv.csv")
 names(env)
+```
+
+```{r, eval=FALSE}
+#Read from github
+
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
+
+env <- read.csv(file.path(fp, "Wolf_Env_6pops_94indiv.csv"))
+names(env)
+
+
 ```
 
 Or in case you are using a genlight object you should be able to use the @other$ind.metrics table from a genlight data set.
