@@ -52,8 +52,8 @@ The Wolf data set is from Schweizer et al. 2016. Genetic subdivision and candida
 
 # Multivariate GEA: Redundancy Analysis
 
- RDA is a multivariate ordination technique that analyzes matricies of loci
-and environmental predictors simultaneously. RDA determines how groups of loci covary in response to the multivariate environment.
+ RDA is a multivariate ordination technique that analyzes matricies of loci and environmental predictors simultaneously. RDA determines how groups of loci covary in response to the multivariate environment.
+
 
 RDA is a two-step analysis in which genetic and environmental data are analyzed using multivariate linear regression, producing a matrix of fitted values. Then PCA of the fitted values is used to produce canonical axes, which are linear combinations of the predictors.
 
@@ -75,6 +75,18 @@ RDA does not require corrections for multiple tests because it analyzes the geno
 I highly recommend the following book for more information on interpreting RDA output from vegan: Borcard et al. (2011) Numerical Ecology with R.
 
 
+##Load necessary libraries
+
+```{r}
+library(psych)
+library(GGally)
+library(robust)
+library(vegan)
+library(qvalue) #bioconductor
+
+```
+
+
 
 Before we can start with our redundancy analysis we need to make sure, we select "suitable" environmental predictors. Meaning the predictors should have a "good" chance to have an effect on our response (the genetic structure) and should not be correlated between each other. 
 
@@ -92,8 +104,20 @@ gen <- as.matrix(gl)
 
 ##Load the genetic data set from a csv file:
 
-```{r}
+```{r, echo=FALSE}
 gen <- as.matrix(read.csv("./data/Wolf_Gen_sample_6pops_94indiv.csv"))
+dim(gen)      # 94 individuals in rows; 10,000 SNPs in columns
+gen[1:5,1:5]  # coded as 0/1/2
+
+```
+
+
+```{r, eval=FALSE}
+#Read from github
+
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
+
+gen <- read.csv(file.path(fp,"Wolf_Gen_sample_6pops_94indiv.csv"))
 dim(gen)      # 94 individuals in rows; 10,000 SNPs in columns
 gen[1:5,1:5]  # coded as 0/1/2
 
@@ -102,10 +126,24 @@ gen[1:5,1:5]  # coded as 0/1/2
 
 ##Load the environmental data set
 
-```{r}
+
+
+
+```{r, echo=FALSE}
 # Read in the individual & environmental data:
 env <- read.csv("./data/Wolf_Env_6pops_94indiv.csv")
 names(env)
+```
+
+```{r, eval=FALSE}
+#Read from github
+
+fp <- "https://raw.githubusercontent.com/green-striped-gecko/dartRworkshop/master/data"
+
+env <- read.csv(file.path(fp, "Wolf_Env_6pops_94indiv.csv"))
+names(env)
+
+
 ```
 
 Or in case you are using a genlight object you should be able to use the @other$ind.metrics table from a genlight data set.
@@ -115,32 +153,232 @@ env <- @other$ind.metrics
 
 ```
 
-
-
 ##Check for multicollinearity between predictors (|r|>0.7)
 
 ```{r, fig.height=6}
-library(psych)
+
 pairs.panels(env[, 5:12]) #good for contineous predictors only
 
-library(GGally)
+
 ggpairs(env[,-1]) #allows also factors [except individual]
 
 ```
 
 
+Next we look at landscape cover (a factor)
+
+```{r}
+table(env$land_cover) # let's look at land cover, which is a factor
+ 
+```
+
+The distribution of the factor levels is very uneven and dominated by classes 1,7 & 8, so either we would need to combine classes or delete the predictor.
+```{r}
+
+env <- env[,-13] #remove land cover
+
+```
+
+```{r, fig.height=5}
+pairs.panels(env[,5:15], scale=T)
+```
+
+And we also remove factors with high collinearity
+
+```{r, fig.height=5}
+env <- env[,-12]     # remove precip coldest quarter: 0.97 corr with annual precip
+pairs.panels(env[,5:14], scale=T)
 
 
+env <- env[,-c(8,9)]  # remove maxT_warm, minT_cold; covers remaining strong correlations in a small # of predictors
+pairs.panels(env[,5:12], scale=T)
 
+
+# Try this reduced set of predictors:
+pred <- env[,5:12]
+colnames(pred) <- c("AMT","MDR","sdT","AP","cvP","NDVI","Elev","Tree") 
+```
+
+Finally we need to scale those predictors (as they are in different units)
+
+```{r}
+pred <- scale(pred, scale = TRUE, center = TRUE) # default is center and scale = T; this subtracts the mean from each value, then divides by the st. dev.
+
+ 
+```
+
+
+Running the actual RDA is fairly simple:
 
 
 ```{r}
-library(vegan)
-pred <- env[,5:10]
-#colnames(pred) <-c("AMT","MDR","sdT","AP","cvP","NDVI","Elev","Tree")
+
 
 wolf.rda <- rda(gen ~ ., data=as.data.frame(pred), scale=T)  # vegan wants data frames, not matrices
+
+wolf.rda
+
 ```
+
+We have as many constrained ("RDA") axes as we have predictors. Residual variance is then modeled by PCA (the unconstrained "PC" axes). Variance explained by the environmental predictors is under "Proportion" and "Constrained" = equivalent to R2 in multiple regression, so it is biased & should be adjusted based on the # of predictors:  
+
+
+```{r}
+RsquareAdj(wolf.rda)
+```
+
+Our constrained ordination explains about 5% of the variation [Not to surprising given our large # of SNPs and other processes at work]
+
+How many of our 8 constrained axes should we retain for detecting outliers?
+
+We can do a formal significance test, but it takes quite a while to run...(& is probably not necessary!)
+
+```{r, eval=FALSE}
+
+signif.axis <- anova.cca(wolf.rda, by="axis") 
+# takes a few HOURS for the full 41K SNP data set [See ?anova.cca for more details and options]
+```
+
+Instead, let's look at the eigenvalues for the constrained axes & plot them
+```{r}
+summary(eigenvals(wolf.rda, model = "constrained"))
+screeplot(wolf.rda) # variance explained drops off after 3 axes
+
+```
+
+
+Finally let's check VIFs for our predictors (they should be ok)
+
+```{r}
+vif.cca(wolf.rda) 
+```
+
+ # All are below 10 and most are below 5 = multicollinearity shouldn't be a problem.
+
+
+## Plot the RDA
+
+Simple plots
+```{r, fig.height=4}
+
+plot(wolf.rda, scaling=3)
+
+```
+
+scaling=3 means symmetrical scaling (SNP & indiv scores are scaled by the square root of the eigenvalues) [See Borcard et al. 2011 or vegan help for more information on scaling RDA plots]
+
+```{r, fig.height=4}
+plot(wolf.rda, choices=c(1,3), scaling=3)  # axes 1 and 3
+
+```
+
+SNPs are in red; individuals are black circles; blue vectors are predictors.
+
+
+The relative arrangement of these items in the ordination space reflects their relationship with the ordination axes, which are linear combinations of the predictor variables
+
+
+Let's make some nicer plots:
+
+```{r, fig.height=4}
+levels(env$ecotype) <- c("Western Forest","Boreal Forest","Arctic","High Arctic","British Columbia","Atlantic Forest")
+colorby <- env$ecotype
+bg <- c("#ff7f00","#1f78b4","#ffff33","#a6cee3","#33a02c","#e31a1c")
+
+# axes 1 & 2
+plot(wolf.rda, type="n", scaling=3)
+points(wolf.rda, display="species", pch=20, cex=0.7, col="gray32", scaling=3)               # the snps
+points(wolf.rda, display="sites", pch=21, cex=1.3, col="gray32",scaling=3, bg=bg[colorby])  # the wolves
+text(wolf.rda, scaling = 3, display = "bp", col="#0868ac", cex=1.1)                         # the predictors
+legend("bottomright", legend = levels(colorby), bty = "n", col="gray32", pch = 21, cex=1, pt.bg = bg)
+
+```
+
+```{r, fig.height=4}
+
+# axes 1 & 3
+plot(wolf.rda, type="n", scaling=3, choices=c(1,3))
+points(wolf.rda, display="species", pch=20, cex=0.7, col="gray32", scaling=3, choices=c(1,3))
+points(wolf.rda, display="sites", pch=21, cex=1.3, col="gray32",scaling=3, bg=bg[colorby], choices=c(1,3))
+text(wolf.rda, scaling = 3, display = "bp", col="#0868ac", cex=1.1, choices=c(1,3))
+legend("topleft", legend = levels(colorby), bty = "n", col="gray32", pch = 21, cex=1, pt.bg = bg)
+
+```
+
+
+The impact of continental scale climate is reflected in these plots: BC is wet with low temp seasonality; Arctic areas have small mean diurnal range, low annual temps, andlow tree cover and veg. greenness (NDVI); Atlatic and Western Forsts show weak & strong precip seasonality, respectively.
+
+
+## Identify candidates
+
+In their publication (Forester et al. 2018, ME), they pulled SNPs with extreme loadings from relevant constrained axes:
+
+```{r, fig.height=5}
+
+load.rda <- summary(wolf.rda)$species[,1:3]   # RDA loadings ("species") for axes 1:3
+
+
+par(mfrow=c(2,2))
+hist(load.rda[,1])
+hist(load.rda[,2])
+hist(load.rda[,3]) # loadings relatively normally distributed
+par(mfrow=c(1,1))
+
+
+```
+
+This approach works well when selection gradients are well understood (high TP, low FP). For analyses with many predictors, or where the analysis is more exploratory, a multidimensional outlier identification approach will help reduce FP rates (though this also brings down TP rates, of course).
+
+Mahalanobis post-processing of RDA outlier detection results:
+
+Capblancq T, Luu K, Blum MGB, Bazin E (2018) Mol Ecol Resources
+
+For code to pull outliers on each axis, see our tutorial/vignette:
+https://popgen.nescent.org/2018-03-27_RDA_GEA.html
+
+We will just use the Mahalanobis distance approach suggested by Capblancq et al.
+
+```{r}
+
+K <- 3  # the number of RDA axes you're looking at
+
+zscale <- apply(load.rda, 2, scale)        # I'm not sure scaling is the best approach here...
+mscale <- covRob(zscale, distance=TRUE, na.action=na.omit, estim="pairwiseGK")$dist
+gif <- median(mscale)/qchisq(0.5, df=K)
+
+rda.pval <- pchisq(mscale/gif, df=K, lower.tail=FALSE)   # Remember: you can always change the GIF!!
+hist(rda.pval) #looks a little conservative
+
+rda.pval2 <- pchisq(mscale/1.15, df=K, lower.tail=FALSE)  # Less conservative GIF (smaller)
+hist(rda.pval2)
+
+rda.qval <- qvalue(rda.pval2)$qvalues
+rda.FDR.1 <- colnames(gen)[which(rda.qval < 0.1)]
+```
+Let's look at where these candidates are in the ordination space:
+```{r, fig.height=4, warning=FALSE}
+
+# color by predictor:
+snp.color <- as.data.frame(colnames(gen), stringsAsFactors=F)
+snp.color[,2] <- apply(snp.color, 1, function(x) if(x %in% rda.FDR.1) 'gray32' else '#00000000')
+snp.color[,3] <- apply(snp.color, 1, function(x) if(x %in% rda.FDR.1) '#e31a1c' else '#00000000')
+
+# axes 1 & 2
+plot(wolf.rda, type="n", scaling=3, xlim=c(-1,1), ylim=c(-1,1))
+points(wolf.rda, display="species", pch=21, cex=1, col="gray32", bg='#f1eef6', scaling=3)
+points(wolf.rda, display="species", pch=21, cex=1, col=snp.color[,2], bg=snp.color[,3], scaling=3)
+text(wolf.rda, scaling=3, display="bp", col="#0868ac", cex=1)
+
+# axes 2 & 3
+plot(wolf.rda, type="n", scaling=3, xlim=c(-1,1), ylim=c(-1,1), choices=c(2,3))
+points(wolf.rda, display="species", pch=21, cex=1, col="gray32", bg='#f1eef6', scaling=3, choices=c(2,3))
+points(wolf.rda, display="species", pch=21, cex=1, col=snp.color[,2], bg=snp.color[,3], scaling=3, choices=c(2,3))
+text(wolf.rda, scaling=3, display="bp", col="#0868ac", cex=1, choices=c(2,3)) 
+
+
+
+```
+
 
 
 
