@@ -1,0 +1,894 @@
+---
+title: "Landscape geneticis - Katoomba"
+author: "Bernd Gruber & Niko Balkenhol"
+date: '`r Sys.Date()`'
+output: 
+
+#  pdf_document:
+#  toc: yes
+#    number_sections: true
+#    includes: 
+#      in_header: boxcba.tex
+#  tufte::tufte_html:
+#  tufte::tufte_book:
+  tufte::tufte_handout:
+    
+#citation_package: natbib
+   latex_engine: xelatex
+   toc: yes
+   
+
+   highlight: tango
+   includes:
+     in_header: boxkatoomba.tex
+     
+always_allow_html: yes
+        # tufte::tufte_book:
+#   citation_package: natbib
+#   latex_engine: xelatex
+#   highlight: tango
+#   includes:
+#           in_header: box2.tex
+#bibliography: skeleton.bib
+#link-citations: yes
+---
+
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+library(tufte)
+library(knitr)
+#knitr::opts_chunk$set(prompt = TRUE)
+```
+
+-------
+
+\includegraphics{./images/katoomba.png}
+
+
+\newpage
+
+# Forword
+
+The idea of this tutorial is:
+
+
+- You run it on your on pace.
+- During the tutorial there will be tasks to be solved (look out for the penguins)
+- If you get stuck, please ask or refer to the solutions/explanations given at the end of the text (you can use the links in the electronic version to jump to it)
+- Please ask and discuss as much as you like the content. 
+- The tutorial runs for 3 hours, so please be aware that not all the content can be covered in detail, again please discuss and ask us as much as you like regarding the topics.
+
+
+Have fun,
+
+Niko & Bernd
+
+# Introduction
+
+The tutorial aims to teach you how to run a landscape genetic analysis. This requires from you two things. An understanding of genetics and how we meassure population structure (either on a population level or on an individual level). As we try to be "modern", we will use SNP data, so some people would call the tutorial 'landscape genomics'. The second requirement is an understanding of spatial data (point and raster data), as we need a representation of individuals in space to do landscape genomics. The main issue here is the idea of coordinate systems, projection and a landscape represented by resistance values. 
+
+- The tutorial consists of three parts:
+
+1. Load your data [genetics and landscape] into R
+2. Run an isolation by distance analysis
+3. Prepare your landscape layers [coordinate systems and resistance values]
+4. Calculate pairwise distance matrices [Genetic distance, Euclidean distance and cost distances]
+5. Analyse the distance matrices [(partial) mantel tests, MMRR, gdm, MCMC (sunder)]
+6. Final exam (just joking)
+
+
+# 0. Install packages and preparation
+
+For this R session we need a number of packages to be installed. The good news is that all packages should be installed on your virtual machine, but in case you want to run an analysis at home, make sure the commands below run without error (warnings are most likely to be okay).
+Just as a reminder in case a package is not installed run: ```install.packages("vegan", dependencies=TRUE)```.
+
+```{r, warning=FALSE, message=FALSE}
+#run withour error
+library(adegenet)
+library(Rcpp)
+library(raster)
+library(rgdal)
+library(PopGenReport)
+library(dartR)  
+library(Sunder)
+library(ecodist)
+library(gdm)
+library(GGally)
+
+
+```
+
+
+To make life easier we created some helper function which can be sourced into your session. The code can be found in this days workshop folder. We 'source' in the helper functions via:
+
+
+```{r, echo=TRUE}
+source("./WEEG/Day2/code/helper functions landscape genetics.R")
+```
+
+You should now see some functions being available in your Global Environment (click on the Environment tab to check it).
+
+
+The data sets for this sesssion are located here as well in  the subfolder 'data'.
+
+You can check this via:
+
+```{r, eval=TRUE}
+dir("./WEEG/Day2/data/")
+```
+ 
+
+
+
+\newpage
+# 1. Load your data
+
+In this tutorial we need several kinds of data to run a landscape genetics analysis. 
+ 
+- a genetic data set (SNPs by individuals)
+- coordinates of the individuals
+- maps of interest
+
+To make the whole tutorial more exiting we created a data set that resembles a real world scenario (admittedly the dataset is simulated to make sure if behaves fairly nicely).
+
+
+
+```{block, type="koala"}
+
+**Is there an effect of roads, eucalypt density and elevation on the population structure of koalas in the Katoomba area?**
+
+The data set consists of a sample of 20 animals of koalas sampled around Katoomba. The samples have been genotyped and produced 30000 genetic markers (SNPs). For each sample the coordinates were recorded (using Map Grid Australia 94 (=UTM) as the coordinate system).
+
+Using your GIS skills you were able to source three different maps of the Katoomba area. Each map is a raster data set and covers 1000 x 1000 pixel, whereas each pixel has a dimension of 16x16m. Luckily the coordinate system between your samples and the maps match [otherwise you would need to know how reproject your data sets. At the end of this tutorial you find some short scripts that explain how to do that].
+
+The first map is an digital elevation map of the area in meters [from 110-1160 m]. The second map represents the road network and has different values for highway, normal roads and path/tracks. The third and final map shows the eucalypt density of of koala food trees of the area for each pixel [from 0 to 1]. 
+
+Your task in this tutorial is to find out which 'landscape' has an effect on the population structure of the koala population. 
+
+
+```
+
+## Genetic data 
+We will start with the genetic data set. The aim here is to create a so-called genlight object [described in detail in the ```adegenet`` package and in the dartR Handbook in the literature folder of todays' workshop ] when loading your genetic data. Why genlight? - because it is very compact and allows to handle fairly large SNP data set [up to 1 million SNPs it works well, though some function become slow, e.g. do not try to plot a million snps].
+
+There are several ways to import your data set. The most basic is starting from a text (csv) file, which has the following format: individuals (samples) in rows [including a label in the first column], and loci(snps) in columns [including a label in the first row=header]. See the example of a small snp data set below:
+
+```{r}
+snps.data <- read.csv("./WEEG/Day2/data/snptable.csv")
+kable(snps.data)
+
+
+```
+
+The coding is like 0=homozygote reference, 1=heterozygote and 2=homozygote of the alternate or in other words the entry is the frequency of the alternate allele.
+
+To convert our snps into a genlight object we simply use the ```new``` function from package ```adegenet```. We just need to make sure we strip the first column for the genetic data set and use that column for the names of the individuals (samples), the header (execpt the first column) for the loci names, and finally let the function know that each sample is from an diploid individual.
+
+```{r}
+
+snps.gl <- new("genlight", gen=snps.data[,-1], ind.names=snps.data[,1], loc.names=colnames(snps.data)[-1], ploidy=rep(2, nrow(snps.data)))
+
+```
+
+
+This creates a so-called genlight object, which has the great advantage that all the data is stored in one place [genetics, metadata(e.g. coordinates)]. Moreover you can now use all the functions provided by packages such as dartR & adegenet to manipulate your data.
+
+```{r, fig.height=4, warning=FALSE}
+snps.gl  #gives an overview of the genlight object
+plot(snps.gl)
+gl.report.hwe(snps.gl)
+```
+
+
+Be aware there are many different ways to create a genlight object from SNP data. If you have received your data from DArT (a service provider for SNP data) you can directly use the gl.read.dart function from package dartR. For vcf data you can use the gl.read.vcf function. For more details check the help pages (e.g. ?gl.read.dart), the vignettes of the packages or the table below [from [Gruber et al. 2018: https://onlinelibrary.wiley.com/ doi/full/ 10.1111/1755-0998.12745](https://onlinelibrary.wiley.com/doi/full/10.1111/1755-0998.12745)]: 
+
+
+Import path  | Package | Pathway* | Description 
+------------------|------------|--------|------------------------
+gl.read.dart | dartR |  --- |based on DaRT data [with optional meta data for individuals]
+gl.read.csv  | dartR | ---  | csv file of SNP (0,1,2) or A/T, G/C [optional meta data for loci and individual]
+read.loci    | pegas |  loci2genind, gi2gl | data set are provided as a csv text file (?read.loci)
+gl.read.vcf   | dartR |  ---   | vcf file 
+read.fstat | adegenet | gi2gl | Fstat format (version 2.9.3) by Jerome Goudet
+read.genetix | adegenet | gi2gl | Format Belkhir K., Borsa P., Chikhi L., Raufaste N. & Bonhomme F. (1996-2004) GENETIX 
+read.structure | adegenet | gi2gl | Structure format of Pritchard, J.; Stephens, M. & Donnelly, P. (2000)
+read.PLINK  | adegenet | --- |  Data provided in PLINK format 
+fasta2genlight | adegenet | --- | Extracts SNPs data from fasta format (?adegenet)
+read.genetable | PopGenReport | gi2gl |csv text file based on df2genind Adamack & Gruber (2014) (?read.genetable)
+*Pathway provides the order of functions needed to convert data to genlight, --- indicates that the function direclty  converts to a ```genlight``` object
+
+
+
+```{block, type="task"}
+
+**Task 1**
+
+Here comes the first task. In the 'data' folder you find the data set 'koalas_snps.csv'. Load this data set and convert it into a genlight object called ```koalas```. The genlight object should have 20 individuals and 10000 loci (SNPs). 
+
+In case you get stuck, you can use the hint() function (which is available for every task during the tutorial). Simply type:
+
+```hint(1) ```
+
+for this task and you should get some help. In case you want to have the full solution, type:
+
+```solution(1)```
+
+
+Below you can see the output if you solve it, if you type: 
+
+koalas
+
+into the console.
+
+
+```
+
+
+```{r, echo=FALSE}
+snps.data <- read.csv("./WEEG/Day2/data/koalas_snps.csv")
+
+koalas <- new("genlight", gen=snps.data[,-1], ind.names=snps.data[,1], loc.names=colnames(snps.data)[-1], ploidy=rep(2, nrow(snps.data)))
+
+koalas #check the genlight object
+
+```
+
+For our landscape genetic analysis we need to calculate a meassurement of similarity (genetic distance) between the individuals. For our data set we want to use the proportion of shared alleles between each pair of sample [0=no alleles are shared, 1=all alleles are shared between individuals]. For a landscape genetic analysis we actually want to calculate the opposite (a distance) so we use 1-propShared. To do that for all 20 possible pairs (which results in a 20x20 symmetrical matrix ) we can use the gl.propShared function, which conviniently uses our genlight object as input:
+
+```{r}  
+#Genetic distance matrix
+Gdis <- 1-gl.propShared(koalas)
+```
+
+It is always good to visualise the matrix. There are several commands to do so:
+
+```{r, fig.height=3.5}
+image (Gdis)
+table.value(Gdis, csize=0.4)
+```
+
+For example here you can check if you find individuals that are "very" different from the rest, or you can identify clusters of similarity. It would be good if we can check these by comparing pairwise (dis)similarity between individuals and their location, but we have not added coordinates yet...
+
+```{block, type="hint"}
+**Extra**
+Try to understand the structure of the genlight object (koalas). For example nInd(koalas) returns the number of individuals. 
+
+```
+
+
+
+##Locations
+
+The next step is to attach the locations of your samples to the koala data set. 
+Again there are multiple ways to do it (e.g. gl.read.dart), but we do it in the most basic way, by adding a csv manually to our genlight data set.
+
+The csv file needs to have a column with labels and most importantly you need to know which kind of coordinate system they are in. Most likely (if you recorded your data set via a GPS) you have latitudes and longitudes. [Be aware technically there are different versions of lats and longs, meaning you should know the datum of your coordinate system, which most often is WGS84.]
+
+Lat-longs are a good start but for a landscape genetic analysis you need to convert them into a so-called projected coordinate system, that basically allows to calculate distances in meters [lat-longs are in degrees]. Hence the next three steps are:
+
+- load your coordinates [lat-longs] (and make sure you have a coordinate for each individual)
+- attach them to your genlight object 
+- reproject the lat-longs into a UTM, Zone 56=MGA94 Zone 56 system, which is the most commonly used coordinate system in Australia (best for a limited area, otherwise there are other projections for a continental data set.)
+- calculate a pairwise Euclidean distance matrix (=straight line distance, also called geographic distances)
+
+
+## Load your coordinates
+
+The coordinates are stored in the csv file: koala_locs.csv
+We load them via:
+
+```{r}
+latlongs <- read.csv("./WEEG/Day2/data/koalas_locs.csv")
+head(latlongs)
+
+
+
+
+```
+
+It is always good to check if the labels match and are in the samle order. 
+
+```{r}
+#check if labels match
+sum(indNames(koalas)==latlongs$id)
+
+```
+
+
+Next we store them in our koalas (genlight) object within the slot @other:
+
+```{r}
+koalas@other$latlongs <- latlongs[,2:3]
+head(koalas@other$latlongs)
+```
+
+
+A nice test if we are at the right spot is the following command:
+
+```{r,eval=TRUE}
+pop(koalas)<- 1:20
+gl.map.interactive(koalas)
+```
+
+
+## Reproject the coordinates into MGA94, Zone 56.
+
+To be able to project the data set into another format you need to know the definition of the projection. The easiest way to find it, is to search within [spatialreference.org](spatialreference.org). Please ask if you are not sure what a "projection" is.
+
+```{block, type="task"}
+**Task 2**
+Find via google the proj4 string for the projection:
+
+**MGA96 Zone 56** [and compare it to UTM 56 South] 
+
+at [spatialreference.org](spatialreference.org)
+
+
+Then use the ```project``` function to reproject your latlongs into a new object called ```xy```. Be aware that you need to convert the latlongs into a matrix using the ```as.matrix``` function. 
+
+Again you can type ```hint(2)``` or ```solution(2)``` if you get stuck. 
+
+Compare your coordinates with the output below.
+
+```
+
+```{r, echo=FALSE}
+xy <- project(as.matrix(koalas@other$latlongs), proj = '+proj=utm +zone=56 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs')
+```
+
+
+You may noticed that the names of xy are still lat-long (which is not good), so we should change them:
+
+```{r}
+colnames(xy)<- c("x","y")
+head(xy) 
+```
+
+Finally we also store them in our genlight object: 
+
+```{r}
+koalas@other$xy <- data.frame(xy)
+koalas
+```
+
+Now that we have our coordinates we can calculate the pairwise Euclidean (=geographic, =straigth line) distances between the individuals. Before we do that we plot our data to be able to check our results.
+
+```{r}
+par(mfrow=c(1,2), mai=c(0.5,0.5,0,0))
+plot(koalas@other$xy, pch=16, asp=1)
+text(koalas@other$xy+500, labels=1:20)
+
+plot(koalas@other$latlongs, pch=16, asp=1)
+
+```
+
+To calculate pairwise distances we can use good old Pythagoras and fortunately we can do it for all pairs in one go.
+
+```{r}
+Edis <- as.matrix(dist(koalas@other$xy))
+dim(Edis)
+```
+
+The produces a pairwise symmetric distance matrix with dimensions 20x20. As before, when we checked our genetic distance matrix we can visualise it using
+
+```{r}
+table.value(Edis, col.labels = 1:20, csize = 0.3)
+```
+
+
+
+```{block, type="task"}
+
+**Task 3**
+
+a) Find the largest pairwise distance within Edis and check with the plots on the coordinates above.
+
+b) Find the smallest pairwise distance (ignoring the diagonal)
+
+c) Which individual is on average the "most" isolated individual 
+
+
+```
+
+
+Now we want to compare our genetic distance matrix (Gdis) with out Euclidean distance matrix (Edis). Basically we do an "Isolation by distance analysis".^[Often this is done on a pairwise population basis plotting log(distance) against Fst/1-Fst. Check ?gl.ibd for more information.]
+
+There is one step that is important. First you need to be able to convert your matrix into a vector. There is a convenient function to do so ```lower```.
+
+```{r, fig.height=3}
+Edis.vec <- lower(Edis)
+Gdis.vec <- lower(Gdis)
+length(Edis.vec)  #Why 190?
+
+plot(Gdis.vec ~ Edis.vec)
+
+
+```
+
+Do you think there is an isolation by distance effect in our koalas? 
+
+```{block,  type="task"}
+**Task 4**
+
+Run a simple linear regression of Gdis (response) against Edis (predictor).
+Check the regression coefficient r. 
+
+
+```
+
+As you surely remember from the lecture, it is actually not correct to run a simple linear regression on distance matrices (due to non-independence problem of pairwise distances). You need to run a mantel test, which is basically a simple linear regression (resulting in the same r r value), but the p-value (significance) is based on a permutation test, which simple shuffles the distance matrices and check how extreme your r values is compared to the shuffled matrices.
+
+```{r}
+ecodist::mantel(Gdis.vec ~ Edis.vec)
+```
+
+Be aware we put the package in front of the mantel function as there are several mantel test implementation in R (package vegan has mantel() and mantel.randtest() as functions.)
+
+Compare the output of the mantel test with your linear regression.
+
+
+## Load your maps and quantify your landscape structure
+
+The next and final step before we run our landscape genomic analysis is to load maps, check if they align with the locations (coordinate systems match), convert maps into resistance maps and finally create cost distances from the resistance maps.
+
+We provide three different maps for you to 'play' with. 
+
+The first map is a map of a road network of the area around Katoomba. We provide it in a geotiff format (which is very convenient as this format comes with a projection[=coordinate system] and it happens to be the same as our xy coordinates, MGA94, Zone 56).
+
+So we simply can load it and check if is "correct", by plotting the sample locations.
+
+```{r, fig.height=3}
+roads <- raster("./WEEG/Day2/data/roads.tif")
+roads
+plot(roads)
+points(koalas@other$xy, pch=16, col="orange")
+```
+
+The extent of the map is 1000 by 1000 pixels (each pixel is 16.17 x 16.17 meters [don't ask :-)]) and it is important that the extent of your landscape covers the location of your samples. We can check this via:
+
+```{r}
+extent(roads)
+range(koalas@other$xy$x)
+range(koalas@other$xy$y)
+
+
+```
+
+```{block, type="task"}
+**Extra task**
+
+You can try to find a way to "formally" test if all locations are within the extent (there are GIS function in the raster package to do so, e.g. extract, intersect).
+```
+
+
+If you check closely you can see that the maps "codes" road types differently, depending on their width and the amount of traffic. The main road through Katoomba is coded with a value of 3, the 'normal' roads with a value of 2 and path/tracks have a value of 1. All other pixels are coded as zeros.
+We can use the ```values()``` to check which kind of values are used in the raster data set.
+
+
+```{r}
+table(values(roads)) #returns a count on all values in 
+```
+
+
+Finally you should also check that the coordinate systems match.
+
+```{r}
+crs(roads)
+```
+
+```{block, type="task"}
+**Task 5** 
+  
+Load the second may "eucs.tif" and store it under the name "eucs". Plot 'eucs' and check the extent, projection and the "coding". The map is showing the cover of eucalpytus trees within a pixel, so a value of 1 represents a cell that has 100% eucalypt cover and a value of 0 means there are no euclyptus tree in that cell. The idea is that koalas like eucalypts for dispersal and that areas with a high density of eucalypts might promote disperal, whereas no tree limit the dispersal ability of individuals.
+
+
+
+```
+
+```{r, echo=FALSE, fig.height=4}
+eucs <- raster("./WEEG/Day2/data/eucs.tif")
+plot(eucs)
+```
+
+
+The third map 'elevation.asc' is a bit more tricky as it comes as an ascii file (a common format for DEMs (digital elevation models)). This format comes with coordinates but the definition is missing. ^[You can check the file, by opening it into a text editor] The first six lines looks like:
+
+```NCOLS 1000```
+
+```NROWS 1000```
+
+```XLLCORNER 244591.520119074```
+
+```YLLCORNER 6257199.32439938```
+
+```CELLSIZE 16.176657353316```
+
+```NODATA_value -3.4e+38```
+
+You can see that the coordinate system looks good, also the extent and the upper left corner. The NODATA_value is abit odd. As before we load the file using our raster function. ^[The raster function is really great it basically allows to load any format into R, alsn png or jpg. So if you want you could draw your landscape in a paint program.]
+
+```{r}
+ele <- raster("./WEEG/Day2/data/elevation.asc")
+ele
+plot(ele)
+points(koalas@other$xy)
+range(values(ele)) #no missing data!!
+crs(ele)
+
+```
+
+All looks great, except the projection. Be aware we need to add the projection to the ele object (otherwise some function will fall over).
+
+
+```{r}
+crs(ele) <- crs(roads)
+ele
+```
+
+
+## Resistance layers (Quantify your landscape structure)
+
+The next steps are basically a recoding steps. You can imagine that each landscape forms the basis of an hypothesis, namely how it affects the population structure. To operationalise it we need to translate the maps into a pairwise cost distance matrix. That is basically our idea how the landscape affects the connectivity (dispersal, activity) or individuals. For example we may have the idea that roads limit the ability of koalas to meet each other [especially true for wider roads with more traffic]. So we need to convert pixels of our maps which code for roads with resistance values [the larger the road the higher the resistance value]^. Once done, we then feed that resistance layer to calculate pairwise cost distances between the locations of individuals. There are two major variants (leastcost and circuitscape [=commute in R]). Leastcost is using calculating the shortest path between a pair of locations in terms of resistance values; commute is basically taking all possible paths and averages them in accordance on the resistance values. 
+
+Remember our coding is currently: 
+
+0: no road
+
+1: path track
+
+2: 'normal road'
+
+3: motorway
+
+So to recode our roads layer we can use the following commands:
+
+```{r, fig.height=2}
+
+rec.roads <- roads #first copy the original layer
+rec.roads[values(rec.roads)==3] <- 150 # a strong effect for motorways
+rec.roads[values(rec.roads)==2] <-80  #intermediate for roads
+rec.roads[values(rec.roads)==1] <- 1 # a very small effect of tracks
+rec.roads[values(rec.roads)==0] <- 0 # no road has no resistance
+
+
+#check if recoding worked as expected
+par(mai=c(0,0,0,0), mfrow=c(1,2))
+plot(roads)
+plot(rec.roads)
+
+table(values(roads))
+table(values(rec.roads))
+
+```
+
+
+
+
+Once recoded we can calculate the cost distance matrix using the function gl.costdistances(). Please note we will code several cost distance matrices and to keep everything neat and type we collect them into one big list, called CD.
+
+```{r, eval=FALSE}
+CD <- list() #creates and empty list
+
+#be aware that takes about 2 minutes
+system.time(CD$roads <- gl.costdistances(landscape = rec.roads+1, locs = koalas@other$xy, method = "commute", NN = 8))
+```
+
+
+```{r, eval=TRUE, echo=FALSE}
+CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+```
+
+
+
+```{block, type="task"}
+**Task 6**
+a) Plot Gdis (genetic distances) against CD$roads.
+b) Run a mantel test between the roads cost distance and genetic distances. Do you think there is an effect of roads?
+
+```
+
+
+Why +1. After our recoding we had values of zero for "no road"-areas. But zero values basically means there is no resistance. So an individual would be allowed to connect to any individual across the landscape if they are connected by pixels that have zero values, regardless how far away they are. Therefore we need to add an offset (+1), so a move of one cell (if there is no resistance due to roads), still costs the "Euclidean distance". ^[A resistance value of zero, basically would result in an error as there would not be a defined path].
+
+Before we demonstrate the different approaches how to test different cost distances we recode all layers into resistance layer.
+
+```eucs``` represents the cover of eucalypts between zero and one. To convert that into a resistance layer we use the formula:
+
+$$(1 -eucs) *50  $$
+
+Why $1-eucs$? Because this changes a value of 0 to 50 (so a pixel with zero cover has a resistance value of 50). Not as much as a road, but koalas clearly do not like such areas. And a value of 1 turns into zero resistance (again we need to add +1, when we calculate the cost distances)
+
+
+```{r}
+rec.eucs <- (1-eucs)* 50 
+hist(values(rec.eucs))
+
+```
+
+So the cost distance matrix can be calculated via:
+
+
+```{r, eval=FALSE}
+#another two minutes....
+CD$eucs <- gl.costdistances(landscape = rec.eucs+1,locs = koalas@other$xy, method = "commute", NN=8 )
+```
+
+And the next cost distance you want to create is based on elevation (ele). And here it is your choice how to recode it. Basically you might think that elevation has a negative effect (e.g. the higher the elevation, the less likely koalas to disperse). So you could use:
+
+```{r}
+rec.ele <- ele
+
+rec.ele <- (rec.ele-min(values(rec.ele)))/diff(range(values(rec.ele)))*50
+hist(values(rec.ele))
+
+```
+
+The code above standardizes the resistance values of elevation to be between 0-50 (so an elevation of 1160 becomes 50).
+
+To calculate cost distances we use as before:
+
+```{r, eval=FALSE}
+
+CD$eucs <- CD$eucs <- gl.costdistances(rec.eucs+1, locs = koalas@other$xy, method = "commute", NN=8)
+```
+
+
+
+
+```{block, type="hint"}
+
+
+!!! Be aware each cost distance calculation takes about 2-3 minutes. Therefore we prepared a list with all cost distances we came up with and save it under 'CD.rdata' as a file. So if you do not want to wait for the commands below to finish, you can simply type:
+
+CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+
+
+```
+
+
+
+The CD object in the hint was created via:
+
+```{r, eval=FALSE}
+
+CD <- list()
+CD$roads <- gl.costdistances(rec.roads+1, locs = koalas@other$xy, method = "commute", NN=8)
+
+CD$eucs <- gl.costdistances(rec.eucs+1, locs = koalas@other$xy, method = "commute", NN=8)
+CD$ele <- gl.costdistances(rec.ele+1, locs = koalas@other$xy, method = "commute", NN=8)
+
+CD$eucs.roads <- gl.costdistances(rec.eucs+rec.roads+1, locs = koalas@other$xy, method = "commute", NN=8)
+
+CD$eucs.ele <- gl.costdistances(rec.eucs+rec.ele+1, locs = koalas@other$xy, method = "commute", NN=8)
+
+CD$ele.roads <- gl.costdistances(rec.ele+rec.roads+1, locs = koalas@other$xy, method = "commute", NN=8)
+
+
+
+
+```
+
+Which values you want to attach to a road type or eucalyptus density is basically part of your hypothesis and there are several approaches currently used (test different values= fishing for correlations, resistanceGA(), additional data such as telemetry). 
+
+The main caveate is, if you use more than one resistance layer, that the resulting cost distance matrices need to be as different as possible from each other (=low correlation). This is also true for your Null model distance matrix the Eucidean distance matrix, compared to all others. 
+
+So let's check if that is true for our three basic cost distances, (roads, eucs and ). We use a nice function called ggpairs. Unfortunately it needs some reformating to be usefull. We need to convert our list of cost distance (CD) into a data.frame of vectors. Not a big deal but it looks frightening...
+
+```{r}
+names(CD)
+```
+```{r, eval=FALSE}
+
+ggpairs(data.frame(lapply(CD[c("roads","eucs","ele")], lower)))
+
+
+```
+
+
+\includegraphics{./images/ggpairs0.png}
+
+So far so good. All of our predictors are not correlated, so we can use all three of them. The usual threshold is if an |r|>0.7 then you should not use them in an analysis together.
+
+
+And here now comes your "creativity" into play. There is nothing that stops us to create as many costdistance matrix as you like (though before you can test them you need to be sure that they are not correlated). To get you used to the idea you can use the following task and create your own hypothesis. 
+
+Feel free to use also method "leastcost" in case your hypothesis is that koalas do know their landscape very well and "plan" their movement using the leastcost path approach. 
+
+What do you think is "behind" the commute approach?
+
+Read the helppages of ?rSPDistance as this is another version to calculate cost distances (and yet to be explored).
+
+
+
+```{block, type="task"}
+**Task 7**
+
+Create some resistance matrices
+
+a) Your hypothesis is that eucs and roads both have an effect. Therefore you can simply add the two resistance values together: rec.eucs+rec.roads. 
+
+b) Your next hypothesis is that all three resistance layers have an effect. So you add them together, but the maximum cost value should be 100 and minumum cost 0.
+
+c) Create a random resistance (uniform random values between 0 and 50)
+
+d) Create your own resistance layer
+
+Once you finished you can calculate the cost distance matrices from the resistance layers using the gl.costdistances() function and store them in the CD object, but read the hint below first, before you spent all afternoon on cost distances.
+
+```
+
+
+
+# 4. Landscape genetic analysis
+
+## Mantel tests
+To run a mantel test on all cost distances in turn we can use, the helper function all.mantel from Niko:
+
+
+```{r}
+all.mantels(Gdis, Edis, CD)
+```
+
+```{block, type="question"}
+
+Which predictors are good ones?
+
+Which would you keep? 
+
+Do we have IBD? 
+
+Discuss with your neighbour!!!!
+
+Be aware your answers might be different as you may have created different cost matrices.
+
+```
+
+
+Before we get too excited (e.g. roads [and its combinations] seems to be a good candidate, we need to make sure that they are not too highly correlated. So let use collect all matrices in a single object (we need that later anyway).
+
+```{r}
+Alldis <- CD #copy all costdistances
+Alldis$"_GDis" <- Gdis  #add our genetic distance matrix
+Alldis$Edis <- Edis   #add Euclidean distance matrix
+
+#sort to have _GDis first 
+Alldis <- Alldis[order(names(Alldis))]
+
+names(Alldis)
+
+
+
+```
+
+Now we can use the object Alldis to plot all correlations:
+
+```{r, eval=FALSE}
+ggpairs(data.frame(lapply(Alldis, lower)))
+```
+
+\includegraphics{./images/ggpairs1.png}
+
+As you can see there are quite some correlations higher than 0.7, so we need to remove some of them to get a valid answer in the following analysis.
+
+
+##Partial mantel tests (=causal modelling, invented by Wasserman et al.)
+
+Above we have seen that the correlations between the "base"" resistances matrices are quite low, hence we can use those to demonstrate the causal  modelling approach. 
+The function we use is wassermann^[Unfurtunately this function uses the wrong spelling from the researcher who invented it, but it went undetected and is now published like that. The actualy person with the first publication using the approach was Tzeidle N. Wasserman, Landscape Ecol. 2010, 25, 1601–1612.]
+
+
+Test all of them one by one:
+
+```{r}
+wassermann(Gdis, CD["eucs"], Edis, plot = FALSE)
+wassermann(Gdis, CD["roads"], Edis, plot = FALSE)
+wassermann(Gdis, CD[c("ele")], Edis, plot = FALSE)
+```
+
+```{block, type="question"}
+
+Again which of the base resistance matrices turn out to be important to describe the population structure of koalas?
+
+```
+
+
+If you are able to look through it you can also run all the costdistances against each other:
+
+```{r}
+wassermann(Gdis, CD[c("eucs","roads","ele")], Edis, plot = FALSE)
+```
+
+
+
+Maybe a better approach is to use MMRR
+
+
+```{r}
+lgrMMRR(Gdis, CD[c("eucs","roads","ele")], Edis )
+
+```
+
+As you can see here roads come out highly important, but not the other two layers.
+
+But what about using eucs.roads in the mix as well:
+
+
+```{r}
+lgrMMRR(Gdis, CD[c("eucs.roads","ele")], Edis )
+```
+
+
+Feel free to test your layers, again make sure they are not highly correlated.
+
+As an example we know the correlation between eucs and eucs.ele is >0.7 and so between eucs and eucs.roads. So if we simply throw in all the cost distances without checking we get:
+
+```{r}
+lgrMMRR(Gdis, CD[], Edis )
+```
+
+So no layer is significantly contributing in explaining the population structure. Hence as mentioned above make sure your hypothesis are different enough to not being correlated.
+
+##Commonality analysis
+
+Similar to MMRR is the commonality anlysis. The good news is that we already have all that we need to run this analisys. Alldis is a list of distance matrices. Most importantly the fist in the list needs to be your genetic distance matrix. 
+
+
+
+
+
+```{r}
+names(Alldis)
+## let us run the base resistances (this time by numbers)
+#_Gdis, Edis, ele, eucs, roads
+ca.out<-CAmrdm(Alldis[c(1,2,3,5, 8)], regrnperm = 999, bootn = 100, bootprop = 0.25)
+ca.out
+
+```
+
+And the final option is Sunder
+
+```{r, eval=FALSE}
+
+## Warning takes "forever"
+# OPTION E: Bayesian approach of Botta et al. 2015, which is implemented in package "Sunder":
+
+
+#Running roads
+allel.counts <- gl2sunderarray(koalas)
+# setting parameters
+nit <- 10^2 ## just for the example, should be much larger, e.g. 50000
+run  <- c(1,1,1)
+thinning  <- 1 #  just for the example, should be larger, e.g. max(nit/10^3,1)
+ud   <- c(0,1,1,0,0) 
+theta.init <- c(1,2,1,1,0.01)
+n.validation.set  <- dim(allel.counts)[1]*dim(allel.counts)[2]/10 
+theta.max  <- c(10,10*max(Edis),10*max(CD$roads),1,0.01)     
+plot  <- FALSE
+trace <- FALSE
+
+# now running the method
+# this is where we use the allele counts calculated above (koalas@other$a.counts)
+# the straight line distance ('geo')
+# and the effective distance created from he resistance surface based on roads ('koalas@other$eff.roads') - make sure to adjust this input for your own effective distances!
+
+sunder.out<-MCMCCV(allel.counts, D_G = Edis, D_E = CD$roads,
+                   nit, thinning, theta.max, theta.init,
+                   run, ud, n.validation.set, print.pct=TRUE)
+
+# these calculations will take a bit of time...
+
+sunder.out$mod.lik
+
+```
+
+
+```{block, type="finish"}
+
+That is the end. Well done you finished. 
+Feel free to have another go or have a well deserved beverage!!!
+
+```
+
+
+
