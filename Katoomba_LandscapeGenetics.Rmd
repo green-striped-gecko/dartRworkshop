@@ -1,6 +1,6 @@
 ---
 title: "Landscape geneticis - Katoomba"
-author: "Bernd Gruber & Niko Balkenhol"
+author: "Niko Balkenhol & Bernd Gruber"
 date: '`r Sys.Date()`'
 output: 
 
@@ -71,10 +71,8 @@ The tutorial aims to teach you how to run a landscape genetic analysis. This req
 - The tutorial consists of three parts:
 
 1. Load your data [genetics and landscape] into R
-2. Run an isolation by distance analysis
-3. Prepare your landscape layers [coordinate systems and resistance values]
-4. Calculate pairwise distance matrices [Genetic distance, Euclidean distance and cost distances]
-5. Analyse the distance matrices [(partial) mantel tests, MMRR, gdm, MCMC (sunder)]
+2. Resistance surfaces
+3. Analyse the distance matrices [(partial) mantel tests, MMRR, gdm, MCMC (sunder)]
 6. Final exam (just joking)
 
 
@@ -104,7 +102,7 @@ To make life easier we created some helper function which can be sourced into yo
 
 
 ```{r, echo=TRUE}
-source("./WEEG/Day2/code/helper functions landscape genetics.R")
+source("./WEEG/Prac1_Mon/code/helper functions landscape genetics.R")
 ```
 
 You should now see some functions being available in your Global Environment (click on the Environment tab to check it).
@@ -115,7 +113,7 @@ The data sets for this sesssion are located here as well in  the subfolder 'data
 You can check this via:
 
 ```{r, eval=TRUE}
-dir("./WEEG/Day2/data/")
+dir("./WEEG/Prac1_Mon/data/")
 ```
  
 
@@ -155,7 +153,7 @@ We will start with the genetic data set. The aim here is to create a so-called g
 There are several ways to import your data set. The most basic is starting from a text (csv) file, which has the following format: individuals (samples) in rows [including a label in the first column], and loci(snps) in columns [including a label in the first row=header]. See the example of a small snp data set below:
 
 ```{r}
-snps.data <- read.csv("./WEEG/Day2/data/snptable.csv")
+snps.data <- read.csv("./WEEG/Prac1_Mon/data/snptable.csv")
 kable(snps.data)
 
 
@@ -226,7 +224,7 @@ into the console.
 
 
 ```{r, echo=FALSE}
-snps.data <- read.csv("./WEEG/Day2/data/koalas_snps.csv")
+snps.data <- read.csv("./WEEG/Prac1_Mon/data/koalas_snps.csv")
 
 koalas <- new("genlight", gen=snps.data[,-1], ind.names=snps.data[,1], loc.names=colnames(snps.data)[-1], ploidy=rep(2, nrow(snps.data)))
 
@@ -279,7 +277,7 @@ The coordinates are stored in the csv file: koala_locs.csv
 We load them via:
 
 ```{r}
-latlongs <- read.csv("./WEEG/Day2/data/koalas_locs.csv")
+latlongs <- read.csv("./WEEG/Prac1_Mon/data/koalas_locs.csv")
 head(latlongs)
 
 
@@ -439,7 +437,7 @@ The first map is a map of a road network of the area around Katoomba. We provide
 So we simply can load it and check if is "correct", by plotting the sample locations.
 
 ```{r, fig.height=3}
-roads <- raster("./WEEG/Day2/data/roads.tif")
+roads <- raster("./WEEG/Prac1_Mon/data/roads.tif")
 roads
 plot(roads)
 points(koalas@other$xy, pch=16, col="orange")
@@ -487,7 +485,7 @@ Load the second may "eucs.tif" and store it under the name "eucs". Plot 'eucs' a
 ```
 
 ```{r, echo=FALSE, fig.height=4}
-eucs <- raster("./WEEG/Day2/data/eucs.tif")
+eucs <- raster("./WEEG/Prac1_Mon/data/eucs.tif")
 plot(eucs)
 ```
 
@@ -509,7 +507,7 @@ The third map 'elevation.asc' is a bit more tricky as it comes as an ascii file 
 You can see that the coordinate system looks good, also the extent and the upper left corner. The NODATA_value is abit odd. As before we load the file using our raster function. ^[The raster function is really great it basically allows to load any format into R, alsn png or jpg. So if you want you could draw your landscape in a paint program.]
 
 ```{r}
-ele <- raster("./WEEG/Day2/data/elevation.asc")
+ele <- raster("./WEEG/Prac1_Mon/data/elevation.asc")
 ele
 plot(ele)
 points(koalas@other$xy)
@@ -527,7 +525,7 @@ ele
 ```
 
 
-## Resistance layers (Quantify your landscape structure)
+# 2. Resistance layers (Quantify your landscape structure)
 
 The next steps are basically a recoding steps. You can imagine that each landscape forms the basis of an hypothesis, namely how it affects the population structure. To operationalise it we need to translate the maps into a pairwise cost distance matrix. That is basically our idea how the landscape affects the connectivity (dispersal, activity) or individuals. For example we may have the idea that roads limit the ability of koalas to meet each other [especially true for wider roads with more traffic]. So we need to convert pixels of our maps which code for roads with resistance values [the larger the road the higher the resistance value]^. Once done, we then feed that resistance layer to calculate pairwise cost distances between the locations of individuals. There are two major variants (leastcost and circuitscape [=commute in R]). Leastcost is using calculating the shortest path between a pair of locations in terms of resistance values; commute is basically taking all possible paths and averages them in accordance on the resistance values. 
 
@@ -576,7 +574,7 @@ system.time(CD$roads <- gl.costdistances(landscape = rec.roads+1, locs = koalas@
 
 
 ```{r, eval=TRUE, echo=FALSE}
-CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+CD <- readRDS("./WEEG/Prac1_Mon/data/CD.rdata")
 ```
 
 
@@ -641,7 +639,7 @@ CD$eucs <- CD$eucs <- gl.costdistances(rec.eucs+1, locs = koalas@other$xy, metho
 
 !!! Be aware each cost distance calculation takes about 2-3 minutes. Therefore we prepared a list with all cost distances we came up with and save it under 'CD.rdata' as a file. So if you do not want to wait for the commands below to finish, you can simply type:
 
-CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+CD <- readRDS("./WEEG/Prac1_Mon/data/CD.rdata")
 
 
 ```
@@ -720,7 +718,7 @@ Once you finished you can calculate the cost distance matrices from the resistan
 
 
 
-# 4. Landscape genetic analysis
+# 3. Landscape genetic analysis
 
 ## Mantel tests
 To run a mantel test on all cost distances in turn we can use, the helper function all.mantel from Niko:
@@ -829,7 +827,7 @@ lgrMMRR(Gdis, CD[], Edis )
 
 So no layer is significantly contributing in explaining the population structure. Hence as mentioned above make sure your hypothesis are different enough to not being correlated.
 
-##Commonality analysis
+##Commonality analysis (Prunier et al.)
 
 Similar to MMRR is the commonality anlysis. The good news is that we already have all that we need to run this analisys. Alldis is a list of distance matrices. Most importantly the fist in the list needs to be your genetic distance matrix. 
 
@@ -845,6 +843,8 @@ ca.out<-CAmrdm(Alldis[c(1,2,3,5, 8)], regrnperm = 999, bootn = 100, bootprop = 0
 ca.out
 
 ```
+
+##Sunder (a Bayesian approach)
 
 And the final option is Sunder
 
@@ -891,4 +891,105 @@ Feel free to have another go or have a well deserved beverage!!!
 ```
 
 
+#5. Other bits of code
 
+There are some additional functions you might want to have a look at:
+
+##Generalised dissimilarity matrices
+
+This is a potentially cool approach, but we have not "played" with it a lot. Please let us know if you have.
+
+Runs a generalised dissimilarity analysis (Kilpatrick & Kellner)
+
+
+```{r, fig.height=4}
+gdm <- gl.gdm(xy=koalas@other$xy, gdis = Gdis, cdis = CD$roads, geo = T)
+
+```
+
+
+
+
+## Run circuitscape from Windows (to create a current map)
+
+To be able to run this function you need to have Circuitsape installed. !!This is only tested on Windows and will not run on the workshop machines!!
+
+It is assumed Circuitscape is installed at the usual place
+
+```'C:/"Program Files"/Circuitscape/cs_run.exe'```
+
+otherwise you need to set the CS_exe parameter. The function returns the circuitscape distance matrix (very similar to commute distances), but maybe more important a circuit current map to visualise the paths.
+
+
+```{r,eval=FALSE}
+#only the first 5 locations (for testing). The whole map takes about an hour to run.
+CS <- gl.runCS(landscape = rec.roads+rec.eucs+1, outpath = tempdir(), locs = koalas@other$xy[1:5,] )
+
+```
+
+
+For plotting use something like:
+
+```{r, eval=FALSE}
+plot(log(CS$map), col=heat.colors(255))
+```
+
+
+Example output for the first five 
+
+\includegraphics{./images/CS.png}
+
+
+## A complete analysis using ```gl.genleastcost```
+
+gl.genleastcost is a wrapper function that allows to run a complete analysis in one go (and plots in the case of 'leastcost' the paths on the map).
+
+The output can then be used to run the downstream analysis such as MMRR or commonality analysis. Check ?gl.genleastcost for another example.
+
+```{r, eval=FALSE, fig.height=4}
+#takes some minutes to run!!!
+
+glc <- gl.genleastcost(koalas[1:5,], rec.roads+1, "propShared", NN=8, pathtype = "leastcost")
+lgrMMRR(gen.mat = glc$gen.mat, cost.mats = glc$cost.mats,  eucl.mat = glc$eucl.mat)
+
+```
+
+\includegraphics{./images/glc.png}
+
+
+
+## Reproject your coordinates
+
+From geographical projections (lat-lon) to UTM
+
+You need to know two projections, basically which one your coordinates are in. If you have lat-lon you most likely have coordinates in the WGS84 system. Though be aware that GDA94 (the most common system in Australia) is using a different Datum GRS80, which is slightly different and results in "errors" in the order of 1-2 meters if used unknowingly. 
+
+In addition you need to know which your new projection is, for example UTM Zone 55.
+
+We use the project function from rgdal
+
+
+
+```{r, message=FALSE, warning=FALSE}
+library(rgdal)
+canberra <- c(149.13, -35.2809)
+hobart <- c(147.3272, -42.8821)
+
+ll <- rbind(canberra, hobart)
+ll.sp <- SpatialPoints(ll, CRS("+proj=longlat +ellps=WGS84"))
+
+xy <-spTransform(ll.sp, CRS( "+proj=utm +zone=55 +south +ellps=WGS84 +datum=WGS84") )
+coordinates(xy)
+
+```
+
+
+To backtransform is a bit more difficult as we need to define in which projection we are in.
+
+From UTM to lat-lon
+```{r}
+utms <- SpatialPoints(xy,  CRS("+proj=utm +zone=55 +south +ellps=WGS84 +datum=WGS84"))
+ll.sp2 <- spTransform(utms,CRS( "+proj=longlat +ellps=WGS84"))
+coordinates(ll.sp2)
+coordinates(ll.sp)
+```
