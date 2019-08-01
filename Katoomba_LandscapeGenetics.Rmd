@@ -55,9 +55,9 @@ The idea of this tutorial is:
 
 - You run it on your on pace.
 - During the tutorial there will be tasks to be solved (look out for the penguins)
-- If you get stuck, please ask or refer to the solutions/explanations given at the end of the text (you can use the links in the electronic version to jump to it)
+- If you get stuck, please ask or refer to the hint/solutions using the ```hint()``` and ```solution()```functions.
 - Please ask and discuss as much as you like the content. 
-- The tutorial runs for 3 hours, so please be aware that not all the content can be covered in detail, again please discuss and ask us as much as you like regarding the topics.
+- The tutorial runs for 3 hours, so please be aware that not all the content can be covered in detail. Again please discuss and ask us as much as you like regarding the topics.
 
 
 Have fun,
@@ -66,15 +66,15 @@ Niko & Bernd
 
 # Introduction
 
-The tutorial aims to teach you how to run a landscape genetic analysis. This requires from you two things. An understanding of genetics and how we meassure population structure (either on a population level or on an individual level). As we try to be "modern", we will use SNP data, so some people would call the tutorial 'landscape genomics'. The second requirement is an understanding of spatial data (point and raster data), as we need a representation of individuals in space to do landscape genomics. The main issue here is the idea of coordinate systems, projection and a landscape represented by resistance values. 
+The tutorial aims to teach you how to run a landscape genetic analysis. This requires from you two things. An understanding of genetics and how we meassure population structure (either on a (sub)population level or on an individual level). As we try to be "modern", we will use SNP data, so some people would call the tutorial 'landscape genomics'. The second requirement is an understanding of spatial data (point and raster data), as we need a representation of individuals in space to do landscape genomics. The main issues here are the ideas of coordinate systems, projection and a landscape represented by resistance values. 
 
 - The tutorial consists of three parts:
 
 1. Load your data [genetics and landscape] into R
 2. Resistance surfaces
 3. Analyse the distance matrices [(partial) mantel tests, MMRR, gdm, MCMC (sunder)]
-6. Final exam (just joking)
-
+4. Other bits
+5. Final exam (just joking)
 
 # 0. Install packages and preparation
 
@@ -93,6 +93,7 @@ library(Sunder)
 library(ecodist)
 library(gdm)
 library(GGally)
+library(lme4)
 
 
 ```
@@ -138,7 +139,7 @@ To make the whole tutorial more exiting we created a data set that resembles a r
 
 The data set consists of a sample of 20 animals of koalas sampled around Katoomba. The samples have been genotyped and produced 30000 genetic markers (SNPs). For each sample the coordinates were recorded (using Map Grid Australia 94 (=UTM) as the coordinate system).
 
-Using your GIS skills you were able to source three different maps of the Katoomba area. Each map is a raster data set and covers 1000 x 1000 pixel, whereas each pixel has a dimension of 16x16m. Luckily the coordinate system between your samples and the maps match [otherwise you would need to know how reproject your data sets. At the end of this tutorial you find some short scripts that explain how to do that].
+Using your GIS skills you were able to source three different maps of the Katoomba area. Each map is a raster data set and covers 1000 x 1000 pixel, whereas each pixel has a dimension of 16x16m. Luckily the coordinate system between your samples and the maps match [otherwise you would need to know how to reproject your data sets. At the end of this tutorial you find some short scripts that explain how to do that].
 
 The first map is an digital elevation map of the area in meters [from 110-1160 m]. The second map represents the road network and has different values for highway, normal roads and path/tracks. The third and final map shows the eucalypt density of of koala food trees of the area for each pixel [from 0 to 1]. 
 
@@ -202,7 +203,7 @@ read.genetable | PopGenReport | gi2gl |csv text file based on df2genind Adamack 
 
 **Task 1**
 
-Here comes the first task. In the 'data' folder you find the data set 'koalas_snps.csv'. Load this data set and convert it into a genlight object called ```koalas```. The genlight object should have 20 individuals and 10000 loci (SNPs). 
+Here comes the first task. In the 'data' folder you find the data set 'koalas_snps.csv'. Load this data set and convert it into a genlight object called ```koalas```. The genlight object should have 20 individuals and 30000 loci (SNPs). 
 
 In case you get stuck, you can use the hint() function (which is available for every task during the tutorial). Simply type:
 
@@ -410,7 +411,7 @@ Do you think there is an isolation by distance effect in our koalas?
 **Task 4**
 
 Run a simple linear regression of Gdis (response) against Edis (predictor).
-Check the regression coefficient r. 
+Check the regression coefficient r and the $R^2$-value. 
 
 
 ```
@@ -527,7 +528,7 @@ ele
 
 # 2. Resistance layers (Quantify your landscape structure)
 
-The next steps are basically a recoding steps. You can imagine that each landscape forms the basis of an hypothesis, namely how it affects the population structure. To operationalise it we need to translate the maps into a pairwise cost distance matrix. That is basically our idea how the landscape affects the connectivity (dispersal, activity) or individuals. For example we may have the idea that roads limit the ability of koalas to meet each other [especially true for wider roads with more traffic]. So we need to convert pixels of our maps which code for roads with resistance values [the larger the road the higher the resistance value]^. Once done, we then feed that resistance layer to calculate pairwise cost distances between the locations of individuals. There are two major variants (leastcost and circuitscape [=commute in R]). Leastcost is using calculating the shortest path between a pair of locations in terms of resistance values; commute is basically taking all possible paths and averages them in accordance on the resistance values. 
+The next steps are basically all recoding steps. You can imagine that each landscape forms the basis of an hypothesis, namely how it affects the population structure. To operationalise it, we need to translate the maps into a pairwise cost distance matrix. That is basically our idea how the landscape affects the connectivity (dispersal, activity) of individuals. For example we may have the idea that roads limit the ability of koalas to meet each other [especially true for wider roads with more traffic]. So we need to convert pixels of our maps which code for roads with resistance values [the larger the road the higher the resistance value]^. Once done, we then feed that resistance layer to calculate pairwise cost distances between the locations of individuals. There are two major variants (leastcost and circuitscape [=commute in R]). Leastcost is using calculating the shortest path between a pair of locations in terms of resistance values; commute is basically taking all possible paths and averages them in accordance on the resistance values. 
 
 Remember our coding is currently: 
 
@@ -587,7 +588,7 @@ b) Run a mantel test between the roads cost distance and genetic distances. Do y
 ```
 
 
-Why +1. After our recoding we had values of zero for "no road"-areas. But zero values basically means there is no resistance. So an individual would be allowed to connect to any individual across the landscape if they are connected by pixels that have zero values, regardless how far away they are. Therefore we need to add an offset (+1), so a move of one cell (if there is no resistance due to roads), still costs the "Euclidean distance". ^[A resistance value of zero, basically would result in an error as there would not be a defined path].
+Why +1? After our recoding we had values of zero for "no road"-areas. But zero values basically means there is no resistance. So an individual would be allowed to connect to any individual across the landscape, if they are connected by pixels that have zero values, regardless how far away they are. Therefore we need to add an offset (+1), so a move of one cell (if there is no resistance due to roads), still costs the "Euclidean distance". ^[A resistance value of zero, basically would result in an error as there would not be a defined path].
 
 Before we demonstrate the different approaches how to test different cost distances we recode all layers into resistance layer.
 
@@ -628,7 +629,7 @@ To calculate cost distances we use as before:
 
 ```{r, eval=FALSE}
 
-CD$eucs <- CD$eucs <- gl.costdistances(rec.eucs+1, locs = koalas@other$xy, method = "commute", NN=8)
+CD$ele <- gl.costdistances(rec.ele+1, locs = koalas@other$xy, method = "commute", NN=8)
 ```
 
 
@@ -710,7 +711,7 @@ b) Your next hypothesis is that all three resistance layers have an effect. So y
 
 c) Create a random resistance (uniform random values between 0 and 50)
 
-d) Create your own resistance layer
+d) Create your own (univariate or multivariate) resistance layer from the three available landscape layers.
 
 Once you finished you can calculate the cost distance matrices from the resistance layers using the gl.costdistances() function and store them in the CD object, but read the hint below first, before you spent all afternoon on cost distances.
 
@@ -727,6 +728,9 @@ To run a mantel test on all cost distances in turn we can use, the helper functi
 ```{r}
 all.mantels(Gdis, Edis, CD)
 ```
+
+!!NOTE: This function only reports the p-value for the hypothesis that the true relationship between genetic and landscape distances is HIGHER than a random association. Thus, the function assumes that you have coded your resistance layers in a way that leads to positive correlation coefficients! When using this with your own data, make sure to check the sign of the correlations, as you might have high negative correlations that are deemed insignificant in the output of this function.” This is also the case for your Wasserman function (see below)!!
+
 
 ```{block, type="question"}
 
@@ -750,7 +754,7 @@ Alldis <- CD #copy all costdistances
 Alldis$"_GDis" <- Gdis  #add our genetic distance matrix
 Alldis$Edis <- Edis   #add Euclidean distance matrix
 
-#sort to have _GDis first 
+#sort to have _GDis first [underscore is used to make _GDis first]
 Alldis <- Alldis[order(names(Alldis))]
 
 names(Alldis)
@@ -770,10 +774,10 @@ ggpairs(data.frame(lapply(Alldis, lower)))
 As you can see there are quite some correlations higher than 0.7, so we need to remove some of them to get a valid answer in the following analysis.
 
 
-##Partial mantel tests (=causal modelling, invented by Wasserman et al.)
+##Partial mantel tests (=causal modelling, invented by Cushman et al. and nicely explained by Wasserman et al.)
 
 Above we have seen that the correlations between the "base"" resistances matrices are quite low, hence we can use those to demonstrate the causal  modelling approach. 
-The function we use is wassermann^[Unfurtunately this function uses the wrong spelling from the researcher who invented it, but it went undetected and is now published like that. The actualy person with the first publication using the approach was Tzeidle N. Wasserman, Landscape Ecol. 2010, 25, 1601–1612.]
+The function we use is wassermann^[Unfurtunately this function uses the wrong spelling from the researcher who nicely explained the approach, but it went undetected and is now published like that. The actualy publication I based my function on was Tzeidle N. Wasserman, Landscape Ecol. 2010, 25, 1601–1612.]
 
 
 Test all of them one by one:
@@ -827,9 +831,9 @@ lgrMMRR(Gdis, CD[], Edis )
 
 So no layer is significantly contributing in explaining the population structure. Hence as mentioned above make sure your hypothesis are different enough to not being correlated.
 
-##Commonality analysis (Prunier et al.)
+##Commonality analysis (Prunier et al. 2017)
 
-Similar to MMRR is the commonality anlysis. The good news is that we already have all that we need to run this analisys. Alldis is a list of distance matrices. Most importantly the fist in the list needs to be your genetic distance matrix. 
+Similar to MMRR is the commonality anlysis. The good news is that we already have all that we need to run this analysis. Alldis is a list of distance matrices. Most importantly the fist in the list needs to be your genetic distance matrix. 
 
 
 
@@ -844,6 +848,61 @@ ca.out
 
 ```
 
+##MLPE (Clark et al. 2002)
+
+To run the MLPE (Maximum likelihood population-effect) mixed models by Clarke et al 2002, we can use different functions provided in the 'resistanceGA' package of Bill Peterman.
+
+Since it is a bit tricky to install this package, we copied and provide the relevant functions from this package via the "helper" file. You should see functions like ```MLPElmm``` and ```ZZ.mat``` in your Global Environment tab.
+
+We will use the function ```To.From.ID``` to create an object that lists all possible pairs of individuals.
+This object is essentially used to define the covariance structure in the model.
+
+```{r}
+ids <- To.From.ID(nInd(koalas))
+head(ids)
+```
+
+The function 'mlpe_rga' requires the lower half of the matrices, so for convenience we can just put all our reformated distances into a dataframe:
+
+
+```{r}
+df <- data.frame(lapply(Alldis, lower))
+names(df)
+
+df$pop <- ids$pop1
+
+
+```
+
+Please note that 'X_GDis' is the name of our genetic distance matrix.
+
+We can now run the different models that we can compare using AIC values, for example the full model with all variables...
+
+```{r}
+mlpe.full <- mlpe_rga(formula = X_GDis ~ Edis+  roads + eucs + ele +(1|pop), data=df)
+summary(mlpe.full)
+AIC(mlpe.full)
+```
+
+ ...or a model including only Euclidean distances and effective distances based on roads:
+
+```{r}
+mlpe.roads <- mlpe_rga(formula = X_GDis ~ Edis+  roads+(1|pop), data=df)
+summary(mlpe.roads)
+mlpe.ele <-  mlpe_rga(formula = X_GDis ~ Edis+  ele+(1|pop), data=df)
+summary(mlpe.ele)
+```
+
+
+We now can compare the models based on their AIC:
+
+```{r}
+AIC(mlpe.roads,  mlpe.ele, mlpe.full)
+```
+
+
+
+
 ##Sunder (a Bayesian approach)
 
 And the final option is Sunder
@@ -851,7 +910,7 @@ And the final option is Sunder
 ```{r, eval=FALSE}
 
 ## Warning takes "forever"
-# OPTION E: Bayesian approach of Botta et al. 2015, which is implemented in package "Sunder":
+#Bayesian approach of Botta et al. 2015, which is implemented in package "Sunder":
 
 
 #Running roads
@@ -891,7 +950,7 @@ Feel free to have another go or have a well deserved beverage!!!
 ```
 
 
-#5. Other bits of code
+#4. Other bits of code
 
 There are some additional functions you might want to have a look at:
 

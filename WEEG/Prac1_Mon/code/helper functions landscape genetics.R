@@ -78,7 +78,7 @@ all.mantels<-function(gen.dist, geo.dist, eff.dist.l, n.perm=299) {
 		eff.l<-lower(as.data.frame(eff.dist.l[i]))
 		m.test.geo<-mantel(gen.dist.l~geo.dist.l, nperm=nperm)
 		m.test<-mantel(gen.dist.l~eff.l, nperm=nperm)
-		pm.test<-mantel(gen.dist.l~eff.l + geo.dist.l, nperm=nperm)
+		pm.test<-ecodist::mantel(gen.dist.l~eff.l + geo.dist.l, nperm=nperm)
 		
 		var.name<-names(eff.dist.l[i])
 		m.r<-m.test['mantelr']
@@ -474,6 +474,143 @@ gl.runCS <- function(landscape, locs,outpath=tempdir(), plot=FALSE, CS_exe = 'C:
   CS_currentmap <- raster(file.path(outpath, "CS_cum_curmap.asc"))
   
   return(list(CSdis=CSdis, map=CS_currentmap))
+}
+
+
+
+
+###############################################################################
+## Functions for the "helper file"
+### These are from the resistanceGA package by Bill Peterman
+
+To.From.ID <- function(POPS) {
+  tmp <- matrix(nrow = POPS, ncol = POPS)
+  dimnames(tmp) <- list(1:POPS, 1:POPS)
+  tmp2 <-
+    as.data.frame(which(row(tmp) < col(tmp), arr.ind = TRUE))
+  tmp2[[2]] <- dimnames(tmp)[[2]][tmp2$col]
+  tmp2[[1]] <- dimnames(tmp)[[2]][tmp2$row]
+  colnames(tmp2) <- c("pop1", "pop2")
+  as.numeric(tmp2$pop1)
+  as.numeric(tmp2$pop2)
+  ID <- plyr::arrange(tmp2, as.numeric(pop1), as.numeric(pop2))
+  p1 <- ID[POPS - 1, 1]
+  p2 <- ID[POPS - 1, 2]
+  ID[POPS - 1, 1] <- p2
+  ID[POPS - 1, 2] <- p1
+  ID$pop1 <- factor(ID$pop1)
+  ID$pop2 <- factor(ID$pop2)
+  return(ID)
+}
+
+
+MLPElmm<-function (resistance, pairwise.genetic, REML = FALSE, ID = NULL, 
+                   ZZ = NULL, scale = TRUE) 
+{
+  response = pairwise.genetic
+  if (class(resistance)[[1]] == "dist") {
+    mm <- as.vector(resistance)
+    m <- attr(resistance, "Size")
+    mm <- mm[which(mm != -1)]
+    if (is.null(ID)) {
+      ID <- To.From.ID(POPS = m)
+    }
+    if (is.null(ZZ)) {
+      ZZ <- ZZ.mat(ID = ID)
+    }
+    if (scale == T) {
+      cs.matrix <- scale(mm, center = TRUE, scale = TRUE)
+    }
+    else {
+      cs.matrix <- mm
+    }
+  }
+  else if (!is.character(resistance)) {
+    mm <- resistance
+    m <- nrow(mm)
+    mm <- lower(mm)
+    mm <- mm[which(mm != -1)]
+    if (is.null(ID)) {
+      ID <- To.From.ID(POPS = m)
+    }
+    if (is.null(ZZ)) {
+      ZZ <- ZZ.mat(ID = ID)
+    }
+    if (scale == T) {
+      cs.matrix <- scale(mm, center = TRUE, scale = TRUE)
+    }
+    else {
+      cs.matrix <- mm
+    }
+  }
+  else {
+    mm <- (read.table(resistance)[-1, -1])
+    m <- nrow(mm)
+    mm <- lower(mm)
+    mm <- mm[which(mm != -1)]
+    if (is.null(ID)) {
+      ID <- To.From.ID(POPS = m)
+    }
+    if (is.null(ZZ)) {
+      ZZ <- ZZ.mat(ID = ID)
+    }
+    if (scale == T) {
+      cs.matrix <- scale(mm, center = TRUE, scale = TRUE)
+    }
+    else {
+      cs.matrix <- mm
+    }
+  }
+  dat <- data.frame(ID, resistance = cs.matrix, response = response)
+  colnames(dat) <- c("pop1", "pop2", "resistance", 
+                     "response")
+  mod <- lFormula(response ~ resistance + (1 | pop1), data = dat, 
+                  REML = REML)
+  mod$reTrms$Zt <- ZZ
+  dfun <- do.call(mkLmerDevfun, mod)
+  opt <- optimizeLmer(dfun)
+  MOD <- (mkMerMod(environment(dfun), opt, mod$reTrms, fr = mod$fr))
+  return(MOD)
+}
+
+
+
+mlpe_rga<-function(formula,
+                   data,
+                   REML = FALSE,
+                   ZZ = NULL) {
+  
+  
+  if(class(formula) != 'formula') {
+    formula <- as.formula(formula)
+  }
+  
+  if(is.null(ZZ)) {
+    obs <- 0.5 * (sqrt((8 * nrow(data)) + 1) + 1)
+    ID <- To.From.ID(obs)
+    ZZ <- ZZ.mat(ID)
+  }
+  
+  # Fit model
+  mod <-
+    lFormula(formula,
+             data = data,
+             REML = REML)
+  mod$reTrms$Zt <- ZZ
+  dfun <- do.call(mkLmerDevfun, mod)
+  opt <- optimizeLmer(dfun)
+  MOD <-
+    (mkMerMod(environment(dfun), opt, mod$reTrms, fr = mod$fr))
+  return(MOD)
+}
+
+
+ZZ.mat<-function(ID) {
+  Zl <-
+    lapply(c("pop1", "pop2"), function(nm)
+      Matrix::fac2sparse(ID[[nm]], "d", drop = FALSE))
+  ZZ <- Reduce("+", Zl[-1], Zl[[1]])
+  return(ZZ)
 }
 
 

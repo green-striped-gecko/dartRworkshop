@@ -18,16 +18,17 @@ library(Sunder)
 library(ecodist)
 library(gdm)
 library(GGally)
+library(lme4)
 
 
 
 
 ## ---- echo=TRUE----------------------------------------------------------
-source("./WEEG/Day2/code/helper functions landscape genetics.R")
+source("./WEEG/Prac1_Mon/code/helper functions landscape genetics.R")
 
 
 ## ---- eval=TRUE----------------------------------------------------------
-dir("./WEEG/Day2/data/")
+dir("./WEEG/Prac1_Mon/data/")
 
 
 ## 
@@ -37,7 +38,7 @@ dir("./WEEG/Day2/data/")
 ## The data set consists of a sample of 20 animals of koalas sampled around Katoomba. The samples have been genotyped and produced 30000 genetic markers (SNPs). For each sample the coordinates were recorded (using Map Grid Australia 94 (=UTM) as the coordinate system).
 
 ## 
-## Using your GIS skills you were able to source three different maps of the Katoomba area. Each map is a raster data set and covers 1000 x 1000 pixel, whereas each pixel has a dimension of 16x16m. Luckily the coordinate system between your samples and the maps match [otherwise you would need to know how reproject your data sets. At the end of this tutorial you find some short scripts that explain how to do that].
+## Using your GIS skills you were able to source three different maps of the Katoomba area. Each map is a raster data set and covers 1000 x 1000 pixel, whereas each pixel has a dimension of 16x16m. Luckily the coordinate system between your samples and the maps match [otherwise you would need to know how to reproject your data sets. At the end of this tutorial you find some short scripts that explain how to do that].
 
 ## 
 ## The first map is an digital elevation map of the area in meters [from 110-1160 m]. The second map represents the road network and has different values for highway, normal roads and path/tracks. The third and final map shows the eucalypt density of of koala food trees of the area for each pixel [from 0 to 1].
@@ -49,7 +50,7 @@ dir("./WEEG/Day2/data/")
 ## 
 
 ## ------------------------------------------------------------------------
-snps.data <- read.csv("./WEEG/Day2/data/snptable.csv")
+snps.data <- read.csv("./WEEG/Prac1_Mon/data/snptable.csv")
 kable(snps.data)
 
 
@@ -71,7 +72,7 @@ gl.report.hwe(snps.gl)
 ## **Task 1**
 
 ## 
-## Here comes the first task. In the 'data' folder you find the data set 'koalas_snps.csv'. Load this data set and convert it into a genlight object called ```koalas```. The genlight object should have 20 individuals and 10000 loci (SNPs).
+## Here comes the first task. In the 'data' folder you find the data set 'koalas_snps.csv'. Load this data set and convert it into a genlight object called ```koalas```. The genlight object should have 20 individuals and 30000 loci (SNPs).
 
 ## 
 ## In case you get stuck, you can use the hint() function (which is available for every task during the tutorial). Simply type:
@@ -99,7 +100,7 @@ gl.report.hwe(snps.gl)
 ## 
 
 ## ---- echo=FALSE---------------------------------------------------------
-snps.data <- read.csv("./WEEG/Day2/data/koalas_snps.csv")
+snps.data <- read.csv("./WEEG/Prac1_Mon/data/koalas_snps.csv")
 
 koalas <- new("genlight", gen=snps.data[,-1], ind.names=snps.data[,1], loc.names=colnames(snps.data)[-1], ploidy=rep(2, nrow(snps.data)))
 
@@ -124,7 +125,7 @@ table.value(Gdis, csize=0.4)
 ## 
 
 ## ------------------------------------------------------------------------
-latlongs <- read.csv("./WEEG/Day2/data/koalas_locs.csv")
+latlongs <- read.csv("./WEEG/Prac1_Mon/data/koalas_locs.csv")
 head(latlongs)
 
 
@@ -232,7 +233,7 @@ plot(Gdis.vec ~ Edis.vec)
 ## 
 ## Run a simple linear regression of Gdis (response) against Edis (predictor).
 
-## Check the regression coefficient r.
+## Check the regression coefficient r and the $R^2$-value.
 
 ## 
 ## 
@@ -242,7 +243,7 @@ ecodist::mantel(Gdis.vec ~ Edis.vec)
 
 
 ## ---- fig.height=3-------------------------------------------------------
-roads <- raster("./WEEG/Day2/data/roads.tif")
+roads <- raster("./WEEG/Prac1_Mon/data/roads.tif")
 roads
 plot(roads)
 points(koalas@other$xy, pch=16, col="orange")
@@ -281,12 +282,12 @@ crs(roads)
 ## 
 
 ## ---- echo=FALSE, fig.height=4-------------------------------------------
-eucs <- raster("./WEEG/Day2/data/eucs.tif")
+eucs <- raster("./WEEG/Prac1_Mon/data/eucs.tif")
 plot(eucs)
 
 
 ## ------------------------------------------------------------------------
-ele <- raster("./WEEG/Day2/data/elevation.asc")
+ele <- raster("./WEEG/Prac1_Mon/data/elevation.asc")
 ele
 plot(ele)
 points(koalas@other$xy)
@@ -327,7 +328,7 @@ table(values(rec.roads))
 
 
 ## ---- eval=TRUE, echo=FALSE----------------------------------------------
-CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+CD <- readRDS("./WEEG/Prac1_Mon/data/CD.rdata")
 
 
 ## **Task 6**
@@ -359,7 +360,7 @@ hist(values(rec.ele))
 
 ## ---- eval=FALSE---------------------------------------------------------
 ## 
-## CD$eucs <- CD$eucs <- gl.costdistances(rec.eucs+1, locs = koalas@other$xy, method = "commute", NN=8)
+## CD$ele <- gl.costdistances(rec.ele+1, locs = koalas@other$xy, method = "commute", NN=8)
 
 
 ## 
@@ -367,7 +368,7 @@ hist(values(rec.ele))
 ## !!! Be aware each cost distance calculation takes about 2-3 minutes. Therefore we prepared a list with all cost distances we came up with and save it under 'CD.rdata' as a file. So if you do not want to wait for the commands below to finish, you can simply type:
 
 ## 
-## CD <- readRDS("./WEEG/Day2/data/CD.rdata")
+## CD <- readRDS("./WEEG/Prac1_Mon/data/CD.rdata")
 
 ## 
 ## 
@@ -416,7 +417,7 @@ names(CD)
 ## c) Create a random resistance (uniform random values between 0 and 50)
 
 ## 
-## d) Create your own resistance layer
+## d) Create your own (univariate or multivariate) resistance layer from the three available landscape layers.
 
 ## 
 ## Once you finished you can calculate the cost distance matrices from the resistance layers using the gl.costdistances() function and store them in the CD object, but read the hint below first, before you spent all afternoon on cost distances.
@@ -449,7 +450,7 @@ Alldis <- CD #copy all costdistances
 Alldis$"_GDis" <- Gdis  #add our genetic distance matrix
 Alldis$Edis <- Edis   #add Euclidean distance matrix
 
-#sort to have _GDis first 
+#sort to have _GDis first [underscore is used to make _GDis first]
 Alldis <- Alldis[order(names(Alldis))]
 
 names(Alldis)
@@ -499,10 +500,41 @@ ca.out
 
 
 
+## ------------------------------------------------------------------------
+ids <- To.From.ID(nInd(koalas))
+head(ids)
+
+
+## ------------------------------------------------------------------------
+df <- data.frame(lapply(Alldis, lower))
+names(df)
+
+df$pop <- ids$pop1
+
+
+
+
+## ------------------------------------------------------------------------
+mlpe.full <- mlpe_rga(formula = X_GDis ~ Edis+  roads + eucs + ele +(1|pop), data=df)
+summary(mlpe.full)
+AIC(mlpe.full)
+
+
+## ------------------------------------------------------------------------
+mlpe.roads <- mlpe_rga(formula = X_GDis ~ Edis+  roads+(1|pop), data=df)
+summary(mlpe.roads)
+mlpe.ele <-  mlpe_rga(formula = X_GDis ~ Edis+  ele+(1|pop), data=df)
+summary(mlpe.ele)
+
+
+## ------------------------------------------------------------------------
+AIC(mlpe.roads,  mlpe.ele, mlpe.full)
+
+
 ## ---- eval=FALSE---------------------------------------------------------
 ## 
 ## ## Warning takes "forever"
-## # OPTION E: Bayesian approach of Botta et al. 2015, which is implemented in package "Sunder":
+## #Bayesian approach of Botta et al. 2015, which is implemented in package "Sunder":
 ## 
 ## 
 ## #Running roads
@@ -539,3 +571,46 @@ ca.out
 ## Feel free to have another go or have a well deserved beverage!!!
 
 ## 
+
+## ---- fig.height=4-------------------------------------------------------
+gdm <- gl.gdm(xy=koalas@other$xy, gdis = Gdis, cdis = CD$roads, geo = T)
+
+
+
+## ----eval=FALSE----------------------------------------------------------
+## #only the first 5 locations (for testing). The whole map takes about an hour to run.
+## CS <- gl.runCS(landscape = rec.roads+rec.eucs+1, outpath = tempdir(), locs = koalas@other$xy[1:5,] )
+## 
+
+
+## ---- eval=FALSE---------------------------------------------------------
+## plot(log(CS$map), col=heat.colors(255))
+
+
+## ---- eval=FALSE, fig.height=4-------------------------------------------
+## #takes some minutes to run!!!
+## 
+## glc <- gl.genleastcost(koalas[1:5,], rec.roads+1, "propShared", NN=8, pathtype = "leastcost")
+## lgrMMRR(gen.mat = glc$gen.mat, cost.mats = glc$cost.mats,  eucl.mat = glc$eucl.mat)
+## 
+
+
+## ---- message=FALSE, warning=FALSE---------------------------------------
+library(rgdal)
+canberra <- c(149.13, -35.2809)
+hobart <- c(147.3272, -42.8821)
+
+ll <- rbind(canberra, hobart)
+ll.sp <- SpatialPoints(ll, CRS("+proj=longlat +ellps=WGS84"))
+
+xy <-spTransform(ll.sp, CRS( "+proj=utm +zone=55 +south +ellps=WGS84 +datum=WGS84") )
+coordinates(xy)
+
+
+
+## ------------------------------------------------------------------------
+utms <- SpatialPoints(xy,  CRS("+proj=utm +zone=55 +south +ellps=WGS84 +datum=WGS84"))
+ll.sp2 <- spTransform(utms,CRS( "+proj=longlat +ellps=WGS84"))
+coordinates(ll.sp2)
+coordinates(ll.sp)
+
