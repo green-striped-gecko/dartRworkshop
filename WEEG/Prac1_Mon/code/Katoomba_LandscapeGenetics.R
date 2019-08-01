@@ -509,6 +509,8 @@ head(ids)
 df <- data.frame(lapply(Alldis, lower))
 names(df)
 
+df <- data.frame(scale(df))
+
 df$pop <- ids$pop1
 
 
