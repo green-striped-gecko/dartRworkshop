@@ -869,6 +869,8 @@ The function 'mlpe_rga' requires the lower half of the matrices, so for convenie
 df <- data.frame(lapply(Alldis, lower))
 names(df)
 
+df <- data.frame(scale(df))
+
 df$pop <- ids$pop1
 
 
