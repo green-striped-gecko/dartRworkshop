@@ -1,5 +1,5 @@
 ---
-title: "Landscape geneticis - Katoomba"
+title: "Exercise - Landscape geneticis - Katoomba"
 author: "Niko Balkenhol & Bernd Gruber"
 date: '`r Sys.Date()`'
 output: 
@@ -54,19 +54,23 @@ library(knitr)
 ```{block, type="task"}
 **Geckos**
 
-This time we are working on tree living geckos. They are meant to be threatened by landuse change (intensity of agriculture) and cats (density of cats).
+This time we are working on geckos. They are meant to be threatened by landuse change (intensity of agriculture) and cats (density of cats).
 
-A friend of yours has sampled 20 individual geckos in a fairly agricultural area. He has two main hypothesis: geckos are limited in their dispersal by the agricultural intensity and also by cat density.
+A friend of yours has sampled 20 individual geckos in a fairly agricultural area. He has two main hypothesis: geckos are limited in their dispersal by the agricultural intensity and also by cat density and he would like to hand in his PhD the following week.
 
-Unfortunately he has no idea about Landscape genetics. Can you help him to check which of the two hypothesis are most likely true?
+Unfortunately he has no idea about Landscape genetics. Can you help him to check which of the two hypothesis are most likely true? He promised to mention you in his acknowledgements.
 
-You can find the data here: [https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data](https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data)
+He gave you a secrect link, where you can find the data: [https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data](https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data)
+
+
 
 - geckos_snps.csv (snp file)
 - geckos_locs.csv (xy locations)
 - agriculture (intensity of agricultuer [0-1])
 - catdensity (density of cats [0-1]) 
 
+
+Or you can also simply download the zip file (geckos.zip).
 
 ```
 
