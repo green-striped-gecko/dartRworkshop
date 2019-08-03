@@ -1,0 +1,81 @@
+---
+title: "Landscape geneticis - Katoomba"
+author: "Niko Balkenhol & Bernd Gruber"
+date: '`r Sys.Date()`'
+output: 
+
+#  pdf_document:
+#  toc: yes
+#    number_sections: true
+#    includes: 
+#      in_header: boxcba.tex
+#  tufte::tufte_html:
+#  tufte::tufte_book:
+  tufte::tufte_handout:
+    
+#citation_package: natbib
+   latex_engine: xelatex
+   toc: yes
+   
+
+   highlight: tango
+   includes:
+     in_header: boxkatoomba.tex
+     
+always_allow_html: yes
+        # tufte::tufte_book:
+#   citation_package: natbib
+#   latex_engine: xelatex
+#   highlight: tango
+#   includes:
+#           in_header: box2.tex
+#bibliography: skeleton.bib
+#link-citations: yes
+---
+
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+library(tufte)
+library(knitr)
+#knitr::opts_chunk$set(prompt = TRUE)
+```
+
+-------
+
+\includegraphics{./images/katoomba.png}
+
+
+\newpage
+
+
+## Geckos, agriculture and cats...
+
+```{block, type="task"}
+**Geckos**
+
+This time we are working on tree living geckos. They are meant to be threatened by landuse change (intensity of agriculture) and cats (density of cats).
+
+A friend of yours has sampled 20 individual geckos in a fairly agricultural area. He has two main hypothesis: geckos are limited in their dispersal by the agricultural intensity and also by cat density.
+
+Unfortunately he has no idea about Landscape genetics. Can you help him to check which of the two hypothesis are most likely true?
+
+You can find the data here: [https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data](https://github.com/green-striped-gecko/dartRworkshop/tree/master/WEEG/Prac1_Mon/data)
+
+- geckos_snps.csv (snp file)
+- geckos_locs.csv (xy locations)
+- agriculture (intensity of agricultuer [0-1])
+- catdensity (density of cats [0-1]) 
+
+
+```
+
+
+
+
+```{block, type="finish"}
+
+Now that you have hopefully solved that mystery, why not having a well deserved break and a beverage?
+
+```
+
